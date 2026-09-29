@@ -66,6 +66,51 @@ function centralWidth(mask: Uint8Array, width: number, y: number, centerX: numbe
   return chosen[1] - chosen[0] + 1;
 }
 
+function supportedBodyWidth(
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  y: number,
+  centerX: number,
+  verticalRadius: number
+) {
+  const supported: number[] = [];
+  const y0 = Math.max(0, y - verticalRadius);
+  const y1 = Math.min(height - 1, y + verticalRadius);
+  const required = Math.max(2, Math.floor((y1 - y0 + 1) * 0.42));
+  for (let x = 0; x < width; x += 1) {
+    let count = 0;
+    for (let yy = y0; yy <= y1; yy += 1) count += mask[yy * width + x];
+    if (count >= required) supported.push(x);
+  }
+  if (!supported.length) return centralWidth(mask, width, y, centerX);
+  const left = supported.filter((x) => x <= centerX);
+  const right = supported.filter((x) => x >= centerX);
+  if (!left.length || !right.length) return centralWidth(mask, width, y, centerX);
+  return Math.max(...right) - Math.min(...left) + 1;
+}
+
+function anatomicalWidth(
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  y: number,
+  centerX: number,
+  bodyHeight: number,
+  supportFraction = 0.035
+) {
+  const radius = Math.max(3, Math.round(bodyHeight * supportFraction));
+  const samples: number[] = [];
+  for (let offset = -3; offset <= 3; offset += 1) {
+    const yy = Math.max(0, Math.min(height - 1, y + offset));
+    const value = supportedBodyWidth(mask, width, height, yy, centerX, radius);
+    if (value && value > 2) samples.push(value);
+  }
+  if (!samples.length) return null;
+  samples.sort((a,b)=>a-b);
+  return samples[Math.floor(samples.length / 2)];
+}
+
 function nearestRowWidth(
   mask: Uint8Array,
   width: number,
@@ -158,10 +203,10 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
   // Semantic landmark bands. These deliberately sample the central connected
   // silhouette so horizontal T-pose arms do not become torso width.
   const headWidth = nearestRowWidth(mask, SIZE, rowAt(0.12), centerX);
-  const shoulderWidth = nearestRowWidth(mask, SIZE, rowAt(0.29), centerX);
-  const chestWidth = nearestRowWidth(mask, SIZE, rowAt(0.39), centerX);
-  const waistWidth = nearestRowWidth(mask, SIZE, rowAt(0.50), centerX);
-  const hipWidth = nearestRowWidth(mask, SIZE, rowAt(0.59), centerX);
+  const shoulderWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.29), centerX, bodyHeight, 0.055);
+  const chestWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.39), centerX, bodyHeight);
+  const waistWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.50), centerX, bodyHeight);
+  const hipWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.59), centerX, bodyHeight);
   const kneeWidth = nearestRowWidth(mask, SIZE, rowAt(0.78), centerX);
   const ankleWidth = nearestRowWidth(mask, SIZE, rowAt(0.94), centerX);
   const symmetryRows = [0.12, 0.29, 0.39, 0.50, 0.59].map((fraction) =>
