@@ -872,7 +872,9 @@ body=bpy.context.selected_objects[0]
 body.name='CanonicalBody'
 with open(recipe_path,'r',encoding='utf-8') as f:
     data=json.load(f)
-joints=data['rig']['joints']
+rig=data.get('rig',{})
+joints=rig.get('joints',[])
+source_bones=rig.get('bones',[])
 def cv(p):
     return (float(p[0]), -float(p[2]), float(p[1]))
 bpy.ops.object.armature_add(enter_editmode=True, location=(0,0,0))
@@ -881,28 +883,45 @@ arm.name='3DBuilder_Rig'
 edit=arm.data.edit_bones
 for b in list(edit):
     edit.remove(b)
-children={}
-for j in joints:
-    if j.get('parent'):
-        children.setdefault(j['parent'],[]).append(j)
 bones={}
-for j in joints:
-    b=edit.new(j['name'])
-    b.head=cv(j['position'])
-    kids=children.get(j['name'],[])
-    if kids:
-        b.tail=cv(kids[0]['position'])
-    else:
-        x,y,z=b.head
-        b.tail=(x,y,z+0.08)
-    if sum((b.tail[i]-b.head[i])**2 for i in range(3)) < 1e-6:
-        x,y,z=b.head
-        b.tail=(x,y,z+0.08)
-    bones[j['name']]=b
-for j in joints:
-    parent=j.get('parent')
-    if parent and parent in bones:
-        bones[j['name']].parent=bones[parent]
+if source_bones:
+    # MakeHuman production path: heads/tails come directly from hm08 landmark
+    # vertex sets after all character morph targets have been applied.
+    for j in source_bones:
+        b=edit.new(j['name'])
+        b.head=cv(j['head'])
+        b.tail=cv(j['tail'])
+        if sum((b.tail[i]-b.head[i])**2 for i in range(3)) < 1e-8:
+            x,y,z=b.head
+            b.tail=(x,y,z+0.02)
+        bones[j['name']]=b
+    for j in source_bones:
+        parent=j.get('parent')
+        if parent and parent in bones:
+            bones[j['name']].parent=bones[parent]
+else:
+    # Legacy procedural/alien recipe path.
+    children={}
+    for j in joints:
+        if j.get('parent'):
+            children.setdefault(j['parent'],[]).append(j)
+    for j in joints:
+        b=edit.new(j['name'])
+        b.head=cv(j['position'])
+        kids=children.get(j['name'],[])
+        if kids:
+            b.tail=cv(kids[0]['position'])
+        else:
+            x,y,z=b.head
+            b.tail=(x,y,z+0.08)
+        if sum((b.tail[i]-b.head[i])**2 for i in range(3)) < 1e-6:
+            x,y,z=b.head
+            b.tail=(x,y,z+0.08)
+        bones[j['name']]=b
+    for j in joints:
+        parent=j.get('parent')
+        if parent and parent in bones:
+            bones[j['name']].parent=bones[parent]
 bpy.ops.object.mode_set(mode='OBJECT')
 # Phase 3 imports deterministic weights authored by 3D Builder. Blender's
 # automatic weights are only a fallback for legacy Phase 2 recipes.
