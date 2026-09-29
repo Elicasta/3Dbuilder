@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BASE_MORPHS } from '../types/character';
-import { resolveMakeHumanMacroTargets, resolveMakeHumanMorphTargets } from './makehumanMorphs';
+import { makeHumanAgeWeights, resolveMakeHumanMacroTargets, resolveMakeHumanMorphTargets } from './makehumanMorphs';
 
 describe('MakeHuman modifier resolver', () => {
   it('uses exact MakeHuman measurement modifiers for body dimensions', () => {
@@ -38,6 +38,14 @@ describe('MakeHuman modifier resolver', () => {
     expect(resolveMakeHumanMorphTargets(BASE_MORPHS, [
       'head/head-scale-horiz-incr.target'
     ])).toEqual([]);
+  });
+
+
+  it('matches MakeHuman age interpolation landmarks', () => {
+    expect(makeHumanAgeWeights(0)).toEqual([{ value: 'baby', weight: 1 }]);
+    expect(makeHumanAgeWeights(0.1875)).toEqual([{ value: 'child', weight: 1 }]);
+    expect(makeHumanAgeWeights(0.5)).toEqual([{ value: 'young', weight: 1 }]);
+    expect(makeHumanAgeWeights(1)).toEqual([{ value: 'old', weight: 1 }]);
   });
 
   it('selects different native macro targets for male and female', () => {
