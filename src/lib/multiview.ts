@@ -333,6 +333,11 @@ export async function analyzeMultiView(
     headScale: mapRatio(head, 0.125, 0.9, 1.12),
     faceWidth: mapRatio(head, 0.125, 0.90, 1.12),
     jawWidth: mapRatio(jaw, 0.105, 0.86, 1.16),
+    eyeSpacing: 1,
+    noseWidth: 1,
+    mouthWidth: 1,
+    noseLength: 1,
+    noseProjection: 1,
     // Side head depth is intentionally conservative because hair, nose and
     // ears contaminate the silhouette. faceDepth maps to head-scale-depth.
     faceDepth: sideHead ? clamp(mapRatio(sideHead, 0.13, 0.94, 1.08), 0.94, 1.08) : 1,
