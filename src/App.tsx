@@ -247,7 +247,7 @@ export default function App() {
         {lastFit && (
           <>
             <span>·</span>
-            <span>fit {Math.round(lastFit.fitQuality * 100)}% · mask {Math.round(lastFit.confidence * 100)}%</span>
+            <span>refs {Math.round(lastFit.fitQuality * 100)}% · landmarks {Math.round(lastFit.landmarkConfidence * 100)}%</span>
           </>
         )}
         <span>·</span>
