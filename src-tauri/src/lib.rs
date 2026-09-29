@@ -335,6 +335,25 @@ fn makehuman_base_obj(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn makehuman_definition_text(app: tauri::AppHandle, file_name: String) -> Result<String, String> {
+    const ALLOWED: &[&str] = &[
+        "modeling_modifiers.json",
+        "modeling_sliders.json",
+        "measurement_modifiers.json",
+        "measurement_sliders.json",
+        "bodyshapes_modifiers.json",
+        "bodyshapes_sliders.json",
+    ];
+    if !ALLOWED.contains(&file_name.as_str()) {
+        return Err("Unsupported MakeHuman definition file.".to_string());
+    }
+    let path = engine_root(&app, "makehuman")?
+        .join("source").join("makehuman").join("data").join("modifiers").join(&file_name);
+    fs::read_to_string(&path)
+        .map_err(|error| format!("Could not read MakeHuman definition {file_name}: {error}"))
+}
+
+#[tauri::command]
 fn makehuman_target_catalog(app: tauri::AppHandle) -> Result<Vec<String>, String> {
     let targets = engine_root(&app, "makehuman")?
         .join("source")
@@ -1004,6 +1023,7 @@ pub fn run() {
             save_recipe,
             makehuman_asset_status,
             makehuman_base_obj,
+            makehuman_definition_text,
             makehuman_target_catalog,
             makehuman_target_text,
             makehuman_rig_text
