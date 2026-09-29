@@ -5,6 +5,13 @@ import { canonicalJoints } from './canonicalRig';
 import { canonicalObj, phase3ExportRecipe } from './canonicalExport';
 import { productionSkinWeights } from './productionSkin';
 
+export interface MakeHumanAssetStatus {
+  installed: boolean;
+  baseMeshPath: string | null;
+  targetsPath: string | null;
+  targetCount: number;
+}
+
 export interface BlenderStatus {
   found: boolean;
   path: string | null;
@@ -21,6 +28,10 @@ export async function getSystemCapabilities(): Promise<SystemCapabilities> {
 
 export async function getEngineStatuses(): Promise<EngineStatus[]> {
   return invoke<EngineStatus[]>('engine_statuses');
+}
+
+export async function getMakeHumanAssetStatus(): Promise<MakeHumanAssetStatus> {
+  return invoke<MakeHumanAssetStatus>('makehuman_asset_status');
 }
 
 export async function installEngineSource(id: string): Promise<string> {
