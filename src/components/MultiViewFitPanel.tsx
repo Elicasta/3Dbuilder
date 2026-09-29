@@ -7,10 +7,7 @@ interface MultiViewFitPanelProps {
   references: CharacterReferences;
 }
 
-export default function MultiViewFitPanel({
-  references,
-  onFit
-}: MultiViewFitPanelProps) {
+export default function MultiViewFitPanel({ references }: MultiViewFitPanelProps) {
   const [busy, setBusy] = useState(false);
   const [analysis, setAnalysis] = useState<MultiViewAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +19,6 @@ export default function MultiViewFitPanel({
     try {
       const result = await analyzeMultiView(references);
       setAnalysis(result);
-      onFit(result.morphPatch, result);
     } catch (reason) {
       setError(String(reason));
     } finally {
@@ -34,8 +30,8 @@ export default function MultiViewFitPanel({
     <section className="panel multiview-panel">
       <div className="panel-header split-header">
         <div>
-          <h2>Multi-view Fit</h2>
-          <p>Front + side + back constrain one editable canonical character.</p>
+          <h2>Reference diagnostics</h2>
+          <p>Inspect masks and landmarks here. Build Character runs the authoritative optimizer.</p>
         </div>
         <span className={count === 3 ? 'view-count ready' : 'view-count'}>{count}/3</span>
       </div>
@@ -47,7 +43,7 @@ export default function MultiViewFitPanel({
           disabled={busy || count === 0}
           onClick={() => void fit()}
         >
-          {busy ? 'Analyzing views…' : count === 3 ? 'Fit from all 3 views' : 'Fit available views'}
+          {busy ? 'Analyzing views…' : 'Analyze references'}
         </button>
 
         {error && <p className="fit-error">{error}</p>}
