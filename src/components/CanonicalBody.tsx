@@ -112,9 +112,14 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
   const addArm = (sign:number) => {
     const limbStart = vertices.length / 3;
     const rings: ArmRing[] = [
-      {x:sign*shoulderX*.72,y:shoulderY-.03,ry:.29*armT,rz:.245*armT},
-      {x:sign*shoulderX*.88,y:shoulderY+.015,ry:.275*armT,rz:.235*armT},
-      {x:sign*shoulderX*1.02,y:shoulderY,ry:.25*armT,rz:.225*armT},
+      // Shoulder socket sequence. These inset loops intentionally overlap the
+      // torso volume while transitioning into the upper arm. The old partial
+      // torso->arm bridge matched incompatible loop orientations and created
+      // the visible triangular shoulder notch in A/relaxed poses.
+      {x:sign*shoulderX*.74,y:shoulderY-.055,ry:.34*armT,rz:.30*armT},
+      {x:sign*shoulderX*.86,y:shoulderY-.018,ry:.315*armT,rz:.275*armT},
+      {x:sign*shoulderX*.98,y:shoulderY,ry:.275*armT,rz:.245*armT},
+      {x:sign*shoulderX*1.08,y:shoulderY-.006,ry:.245*armT,rz:.225*armT},
       {x:sign*(shoulderX+.30*m.armLength),y:shoulderY-.025,ry:.22*armT,rz:.205*armT},
       {x:sign*(elbowX-.13*m.armLength),y:shoulderY-.04,ry:.185*armT,rz:.175*armT},
       {x:sign*elbowX,y:shoulderY-.045,ry:.17*armT,rz:.165*armT},
@@ -132,22 +137,9 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
       }
     });
     for(let r=0;r<starts.length-1;r++) connectRings(indices,starts[r],starts[r+1],seg,sign<0);
-    // Shoulder bridge closes into the upper torso rather than leaving a visible
-    // sphere/tube intersection. The inset keeps the armpit readable in T-pose.
-    const torsoStart=torsoStarts[10];
-    for(let s=0;s<seg;s++){
-      const n=(s+1)%seg;
-      const ca=Math.cos(s/seg*Math.PI*2);
-      const cn=Math.cos(n/seg*Math.PI*2);
-      // The torso ring is parameterized with x = cos(angle) * radius.
-      // Keep the hemisphere on the SAME side as the arm. The previous test was
-      // reversed, which stitched each arm toward the opposite side of the chest
-      // and produced the pinched/cross-body shoulder visible in profile views.
-      if(sign>0 ? (ca<.18 || cn<.18) : (ca>-.18 || cn>-.18)) continue;
-      const ta=torsoStart+s, tn=torsoStart+n;
-      const aa=starts[0]+s, an=starts[0]+n;
-      indices.push(ta,aa,an,ta,an,tn);
-    }
+    // Do not fan this loop directly into a horizontal torso ring. Until the
+    // authored production template lands, the inset socket is the safer cage:
+    // no twisted cross-orientation faces, no shoulder spikes, stable IDs.
     armRanges.push({ start: limbStart, end: vertices.length / 3, sign });
   };
   addArm(-1); addArm(1);
