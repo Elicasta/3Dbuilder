@@ -32,8 +32,16 @@ export default function MakeHumanBody({ objText, character, poseName='bind' }: {
       }));
       const [skeletonText,weightText]=await Promise.all([getMakeHumanRigText('default.mhskel'),getMakeHumanRigText('default_weights.mhw')]);
       const defs=makeHumanBones(body,skeletonText),weights=makeHumanSkinWeights(weightText,body.getAttribute('position').count);
+      body.computeBoundingBox();
+      const before=body.boundingBox!;
+      const rawHeight=Math.max(.001,before.max.y-before.min.y),scale=4.05/rawHeight;
+      const cx=(before.min.x+before.max.x)/2,cz=(before.min.z+before.max.z)/2;
+      const normalizedDefs=defs.map(d=>({...d,
+        head:[(d.head[0]-cx)*scale,(d.head[1]-before.min.y)*scale-2.03,(d.head[2]-cz)*scale] as [number,number,number],
+        tail:[(d.tail[0]-cx)*scale,(d.tail[1]-before.min.y)*scale-2.03,(d.tail[2]-cz)*scale] as [number,number,number]
+      }));
       normalizeMakeHumanForViewport(body);
-      const skinned=skinMakeHumanGeometry(body,defs,weights);
+      const skinned=skinMakeHumanGeometry(body,normalizedDefs,weights);
       if(cancelled){body.dispose();fitted.forEach((item)=>item.geometry.dispose());return;}
       setRigged(previous=>{previous?.geometry.dispose();return {geometry:body,mesh:skinned.mesh,bones:skinned.bones}});
       setGeometry((previous)=>{previous.dispose();return body.clone();});
