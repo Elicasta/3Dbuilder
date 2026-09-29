@@ -1,4 +1,4 @@
-import type { BodyMorphs, CharacterLane } from '../types/character';
+import type { BodyMorphs, CharacterLane, MakeHumanMacroState } from '../types/character';
 
 export interface ResolvedMorphTarget {
   path: string;
@@ -68,7 +68,6 @@ const MODIFIERS: Partial<Record<keyof BodyMorphs, ModifierSpec>> = {
   noseLength: { stems: ['nose/nose-scale-vert'] },
   noseProjection: { stems: ['nose/nose-scale-depth'] },
   mouthWidth: { stems: ['mouth/mouth-scale-horiz'] },
-  mouthHeight: { stems: ['mouth/mouth-scale-vert'] },
   lipFullness: {
     stems: ['mouth/mouth-upperlip-volume', 'mouth/mouth-lowerlip-volume']
   },
@@ -122,7 +121,8 @@ function triangle(value: number, low: string, mid: string, high: string): Discre
 export function resolveMakeHumanMacroTargets(
   lane: CharacterLane,
   morphs: BodyMorphs,
-  catalog: readonly string[]
+  catalog: readonly string[],
+  macro?: MakeHumanMacroState
 ): ResolvedMorphTarget[] {
   if (lane === 'alien') return [];
   const sex = lane === 'female' ? 'female' : 'male';
@@ -133,13 +133,21 @@ export function resolveMakeHumanMacroTargets(
     if (path) result.set(path, (result.get(path) ?? 0) + weight);
   };
 
-  for (const race of ['caucasian', 'asian', 'african']) {
-    add(`macrodetails/${race}-${sex}-young.target`, 1 / 3);
+  const phenotype = macro ?? {
+    age: 0.5, muscle: 0.5, weight: 0.5, proportions: 0.5,
+    african: 1 / 3, asian: 1 / 3, caucasian: 1 / 3
+  };
+  const raceTotal = Math.max(0.0001, phenotype.african + phenotype.asian + phenotype.caucasian);
+  for (const [race, value] of [
+    ['caucasian', phenotype.caucasian],
+    ['asian', phenotype.asian],
+    ['african', phenotype.african]
+  ] as const) {
+    add(`macrodetails/${race}-${sex}-young.target`, value / raceTotal);
   }
 
-  const build01 = Math.max(0, Math.min(1, (morphs.build - 0.68) / 0.70));
-  const muscles = triangle(build01, 'minmuscle', 'averagemuscle', 'maxmuscle');
-  const weights = triangle(build01, 'minweight', 'averageweight', 'maxweight');
+  const muscles = triangle(phenotype.muscle, 'minmuscle', 'averagemuscle', 'maxmuscle');
+  const weights = triangle(phenotype.weight, 'minweight', 'averageweight', 'maxweight');
   const height01 = Math.max(0, Math.min(1, (morphs.height - 0.78) / 0.46));
   const heights = triangle(height01, 'minheight', 'averageheight', 'maxheight');
 
