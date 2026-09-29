@@ -1,4 +1,4 @@
-import type { BodyMorphs, CharacterLane, MakeHumanMacroState } from '../types/character';
+import type { AnatomyState, BodyMorphs, CharacterLane, MakeHumanMacroState } from '../types/character';
 
 export interface ResolvedMorphTarget {
   path: string;
@@ -243,6 +243,28 @@ export function inspectMakeHumanMacroResolution(
     hasSexBasis:lane==='alien'||sexTargets.length>0,
     sample:targets.slice(0,8).map(t=>t.path)
   };
+}
+
+
+function resolveCenteredTarget(catalog:readonly string[],stem:string,value:number):ResolvedMorphTarget[] {
+  const signed=Math.max(-1,Math.min(1,(value-.5)*2));
+  if(Math.abs(signed)<.0001)return [];
+  const suffix=signed<0?'decr':'incr';
+  const path=exact(catalog,`${stem}-${suffix}.target`);
+  return path?[{path,weight:Math.abs(signed)}]:[];
+}
+
+export function resolveMakeHumanAnatomyTargets(
+  lane:CharacterLane,
+  anatomy:AnatomyState,
+  catalog:readonly string[]
+):ResolvedMorphTarget[] {
+  if(lane!=='male'||anatomy.mode==='off')return [];
+  return [
+    ...resolveCenteredTarget(catalog,'genitals/penis-length',anatomy.penisLength),
+    ...resolveCenteredTarget(catalog,'genitals/penis-circ',anatomy.penisGirth),
+    ...resolveCenteredTarget(catalog,'genitals/penis-testicles',anatomy.testicleSize)
+  ];
 }
 
 export function resolveMakeHumanMorphTargets(
