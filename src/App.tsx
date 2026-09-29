@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import CharacterControls from './components/CharacterControls';
 import CharacterViewport from './components/CharacterViewport';
 import EngineLab from './components/EngineLab';
@@ -38,6 +39,7 @@ export default function App() {
   const [generatedMesh, setGeneratedMesh] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [lastFit, setLastFit] = useState<MultiViewAnalysis | null>(null);
+  const [viewMode, setViewMode] = useState<'canonical' | 'ai' | 'overlay'>('canonical');
 
   useEffect(() => {
     detectBlender()
@@ -128,6 +130,7 @@ export default function App() {
         const meshPath = await runReconstruction('triposr', inputPath);
 
         setGeneratedMesh(meshPath);
+        setViewMode('ai');
         setStatus(
           referenceCount === 3
             ? 'Multi-view body fit + AI mesh candidate complete. Blender can inspect the raw candidate while the builder keeps the editable canonical character.'
@@ -249,7 +252,12 @@ export default function App() {
         </aside>
 
         <div className="stage">
-          <CharacterViewport character={character} />
+          <CharacterViewport
+            character={character}
+            aiMeshUrl={generatedMesh ? convertFileSrc(generatedMesh) : null}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
 
           <section className="panel pipeline-panel">
             <div className="pipeline-step done">
