@@ -60,8 +60,12 @@ export default function MultiViewFitPanel({
               <strong>{Math.round(analysis.confidence * 100)}%</strong>
             </div>
             <div>
+              <span>Body fit quality</span>
+              <strong>{Math.round(analysis.fitQuality * 100)}%</strong>
+            </div>
+            <div>
               <span>Views analyzed</span>
-              <strong>{count}</strong>
+              <strong>{count}/3</strong>
             </div>
             {analysis.notes.length > 0 && (
               <p>{analysis.notes.join(' ')}</p>
