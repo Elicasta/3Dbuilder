@@ -5,6 +5,7 @@ import { canonicalJoints } from './canonicalRig';
 import { phase3ExportRecipe } from './canonicalExport';
 import { productionSkinWeights } from './productionSkin';
 import { evaluateMakeHumanGeometry, geometryToObj, resolvedMakeHumanTargets } from './makehumanCharacter';
+import { makeHumanBones, makeHumanSkinWeights } from './makehumanRig';
 
 export interface MakeHumanAssetStatus {
   installed: boolean;
@@ -123,6 +124,19 @@ export async function openCanonicalInBlender(character: CharacterState): Promise
   const productionObj = geometryToObj(evaluated.geometry, character.name || 'MakeHumanBody');
   evaluated.geometry.dispose();
 
+  const [skeletonText, weightText] = await Promise.all([
+    getMakeHumanRigText('default.mhskel'),
+    getMakeHumanRigText('default_weights.mhw')
+  ]);
+  const rig = {
+    source: 'makehuman-default-v110',
+    bones: makeHumanBones(evaluated.geometry, skeletonText),
+    skin: makeHumanSkinWeights(
+      weightText,
+      evaluated.geometry.getAttribute('position').count
+    )
+  };
+
   const recipe = {
     ...phase3ExportRecipe(character),
     canonical: {
@@ -134,7 +148,8 @@ export async function openCanonicalInBlender(character: CharacterState): Promise
       stableVertexIds: true,
       source: 'MakeHuman hm08 visible body',
       subdivisionReady: false
-    }
+    },
+    rig
   };
 
   return invoke<void>('open_character_in_blender', {
