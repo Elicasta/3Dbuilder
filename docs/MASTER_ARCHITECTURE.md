@@ -18,6 +18,12 @@ and three style families:
 
 The builder owns a canonical editable character. AI engines provide measurements, geometry candidates, texture hints, and research outputs, but the product is not locked to any one model.
 
+## Integration-first policy
+
+Do not reimplement solved character technology unless integration fails a concrete requirement. Research existing components before each phase. The procedural TypeScript cage is now frozen as `procedural-cage-v1` and remains a fallback/test fixture.
+
+The production human path is `makehuman-hm08-v1`: CC0 MakeHuman core graphical assets provide the base mesh and morph-target data, while MPFB/Blender remains an external adapter for rigging, proxy/clothing fitting, and finishing. See `docs/INTEGRATION_FIRST.md`.
+
 ## Character flow
 
 ```text
@@ -25,7 +31,7 @@ front + side + back
         ↓
 multi-view silhouette fit
         ↓
-canonical lane body
+MakeHuman hm08 canonical human / topology-family body
         ↓
 AI reconstruction candidates
         ↓
