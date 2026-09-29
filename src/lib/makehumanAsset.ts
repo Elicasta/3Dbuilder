@@ -1,4 +1,4 @@
-import { BufferGeometry } from 'three';
+import type { BufferAttribute, BufferGeometry } from 'three';
 import { parseMakeHumanObj } from './makehumanObj';
 
 export interface MhcloScale { a: number; b: number; reference: number }
@@ -70,8 +70,8 @@ export function fitMhcloGeometry(
   body: BufferGeometry
 ): BufferGeometry {
   const asset = parseMakeHumanObj(objText);
-  const position = asset.getAttribute('position');
-  const human = body.getAttribute('position');
+  const position = asset.getAttribute('position') as BufferAttribute;
+  const human = body.getAttribute('position') as BufferAttribute;
   if (definition.vertices.length < position.count) {
     asset.dispose();
     throw new Error(`MHCLO maps ${definition.vertices.length} vertices but OBJ has ${position.count}.`);
