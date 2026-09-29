@@ -6,6 +6,7 @@ import { parseMakeHumanTarget, type MakeHumanTargetDelta } from './makehumanTarg
 import { resolveNativeModifiers } from './makehumanDefinitions';
 import {
   applyTargetDeltasInPlace,
+  resolveMakeHumanAnatomyTargets,
   resolveMakeHumanMacroTargets,
   resolveMakeHumanMorphTargets,
   type ResolvedMorphTarget
@@ -35,6 +36,7 @@ export function resolvedMakeHumanTargets(
   const merged = new Map<string, number>();
   for (const target of [
     ...resolveMakeHumanMacroTargets(character.lane, character.morphs, catalog, character.macro),
+    ...resolveMakeHumanAnatomyTargets(character.lane, character.anatomy, catalog),
     ...resolveMakeHumanMorphTargets(character.morphs, catalog),
     ...resolveNativeModifiers(character.nativeModifiers ?? {}, catalog)
   ]) {
