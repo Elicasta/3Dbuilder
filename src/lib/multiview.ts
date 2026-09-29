@@ -1,6 +1,6 @@
 import type { CharacterReferences } from '../types/character';
 import type { MultiViewAnalysis, ViewAnalysis } from '../types/multiview';
-import { bodyRatiosFromPose, detectReferenceLandmarks, faceRatios } from './referenceLandmarks';
+import { anatomicalRowsFromPose, bodyRatiosFromPose, detectReferenceLandmarks, faceRatios, type ReferenceLandmarks } from './referenceLandmarks';
 
 const SIZE = 384;
 
@@ -139,7 +139,7 @@ function symmetryAt(mask: Uint8Array, width: number, y: number, centerX: number)
   return 1 - Math.min(1, Math.abs(left - right) / Math.max(left, right, 1));
 }
 
-async function analyzeFile(file: File): Promise<ViewAnalysis> {
+async function analyzeFile(file: File, landmarks?: ReferenceLandmarks | null): Promise<ViewAnalysis> {
   const bitmap = await createImageBitmap(file);
   const canvas = document.createElement('canvas');
   canvas.width = SIZE;
@@ -162,6 +162,7 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
   const image = context.getImageData(0, 0, SIZE, SIZE);
   const background = sampleBackground(image.data, SIZE, SIZE);
   const mask = new Uint8Array(SIZE * SIZE);
+  const semantic=landmarks?.segmentationMask ?? null;
 
   let minX = SIZE;
   let minY = SIZE;
@@ -177,7 +178,11 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
       const dg = image.data[index + 1] - background[1];
       const db = image.data[index + 2] - background[2];
       const distance = Math.sqrt(dr * dr + dg * dg + db * db);
-      const foreground = alpha > 0.08 && distance > 34;
+      const sx=semantic?Math.min(semantic.width-1,Math.max(0,Math.floor((x-dx)/Math.max(drawWidth,1)*semantic.width))):0;
+      const sy=semantic?Math.min(semantic.height-1,Math.max(0,Math.floor((y-dy)/Math.max(drawHeight,1)*semantic.height))):0;
+      const insideDraw=x>=dx&&x<=dx+drawWidth&&y>=dy&&y<=dy+drawHeight;
+      const semanticForeground=semantic&&insideDraw?semantic.values[sy*semantic.width+sx]>=0.5:false;
+      const foreground = semantic ? semanticForeground : (alpha > 0.08 && distance > 34);
 
       if (foreground) {
         mask[y * SIZE + x] = 1;
@@ -200,15 +205,24 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
 
   const rowAt = (fraction: number) =>
     clamp(Math.round(minY + bodyHeight * fraction), minY, maxY);
+  const poseRows=landmarks?.pose.length?anatomicalRowsFromPose(landmarks.pose):null;
+  const imageRow=(normalized:number|null|undefined,fallback:number)=>{
+    if(normalized===null||normalized===undefined)return rowAt(fallback);
+    return clamp(Math.round(dy+normalized*drawHeight),minY,maxY);
+  };
 
   // Semantic landmark bands. These deliberately sample the central connected
   // silhouette so horizontal T-pose arms do not become torso width.
   const headWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.12), centerX, bodyHeight, 0.018);
   const jawWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.205), centerX, bodyHeight, 0.015);
-  const shoulderWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.29), centerX, bodyHeight, 0.055);
-  const chestWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.39), centerX, bodyHeight);
-  const waistWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.50), centerX, bodyHeight);
-  const hipWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.59), centerX, bodyHeight);
+  const shoulderRow=imageRow(poseRows?.shoulder,0.29);
+  const chestRow=imageRow(poseRows?.chest,0.39);
+  const waistRow=imageRow(poseRows?.waist,0.50);
+  const hipRow=imageRow(poseRows?.hip,0.59);
+  const shoulderWidth = anatomicalWidth(mask, SIZE, SIZE, shoulderRow, centerX, bodyHeight, 0.055);
+  const chestWidth = anatomicalWidth(mask, SIZE, SIZE, chestRow, centerX, bodyHeight);
+  const waistWidth = anatomicalWidth(mask, SIZE, SIZE, waistRow, centerX, bodyHeight);
+  const hipWidth = anatomicalWidth(mask, SIZE, SIZE, hipRow, centerX, bodyHeight);
   const kneeWidth = nearestRowWidth(mask, SIZE, rowAt(0.78), centerX);
   const ankleWidth = nearestRowWidth(mask, SIZE, rowAt(0.94), centerX);
   const symmetryRows = [0.12, 0.29, 0.39, 0.50, 0.59].map((fraction) =>
@@ -247,9 +261,9 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
     ankleWidth: ankleWidth ? ankleWidth / bodyHeight : null,
     legSplitY: legSplitY ? (legSplitY - minY) / bodyHeight : null,
     armSpan: bodyWidth / bodyHeight,
-    shoulderY: 0.29,
-    waistY: 0.50,
-    hipY: 0.59,
+    shoulderY: (shoulderRow-minY)/bodyHeight,
+    waistY: (waistRow-minY)/bodyHeight,
+    hipY: (hipRow-minY)/bodyHeight,
     silhouetteSymmetry
   };
 }
@@ -257,12 +271,6 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
 export async function analyzeMultiView(
   references: CharacterReferences
 ): Promise<MultiViewAnalysis> {
-  const [front, side, back] = await Promise.all([
-    references.front ? analyzeFile(references.front) : Promise.resolve(null),
-    references.side ? analyzeFile(references.side) : Promise.resolve(null),
-    references.back ? analyzeFile(references.back) : Promise.resolve(null)
-  ]);
-
   const landmarkSets = await Promise.all(
     (['front','side','back'] as const).map(async (view) => {
       const file=references[view];
@@ -271,6 +279,11 @@ export async function analyzeMultiView(
     })
   );
   const [frontLandmarks,sideLandmarks,backLandmarks]=landmarkSets;
+  const [front,side,back]=await Promise.all([
+    references.front?analyzeFile(references.front,frontLandmarks):Promise.resolve(null),
+    references.side?analyzeFile(references.side,sideLandmarks):Promise.resolve(null),
+    references.back?analyzeFile(references.back,backLandmarks):Promise.resolve(null)
+  ]);
 
   const frontBack = [front, back].filter(Boolean) as ViewAnalysis[];
 
