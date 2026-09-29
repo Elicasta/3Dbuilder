@@ -22,7 +22,7 @@ describe('MakeHuman OBJ adapter', () => {
     const p=g.getAttribute('position');
     expect([p.getX(0),p.getY(0),p.getZ(0)]).toEqual([1,2,3]);
   });
-  it('keeps an upright body's dominant span on Y', () => {
+  it("keeps an upright body's dominant span on Y", () => {
     const g=parseMakeHumanObj('v -1 -2 -.4\nv 1 -2 .4\nv 0 2 .2\nf 1 2 3\n');
     g.computeBoundingBox(); const b=g.boundingBox!;
     expect(b.max.y-b.min.y).toBeGreaterThan(b.max.z-b.min.z);
