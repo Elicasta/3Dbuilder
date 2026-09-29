@@ -82,13 +82,16 @@ export default function App() {
   }
 
   function applyFit(patch: Partial<BodyMorphs>, analysis: MultiViewAnalysis) {
-    setCharacter((current) => ({
-      ...current,
-      morphs: {
-        ...current.morphs,
-        ...patch
-      }
-    }));
+    setCharacter((current) => {
+      const fittedWeight = typeof patch.build === 'number'
+        ? Math.max(0, Math.min(1, (patch.build - 0.78) / 0.44))
+        : current.macro.weight;
+      return {
+        ...current,
+        macro: { ...current.macro, weight: fittedWeight },
+        morphs: { ...current.morphs, ...patch }
+      };
+    });
     setLastFit(analysis);
     setStatus(
       `Multi-view fit applied. Body fit quality ${Math.round(analysis.fitQuality * 100)}%, mask ${Math.round(analysis.confidence * 100)}%.`
