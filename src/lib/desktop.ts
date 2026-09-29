@@ -2,8 +2,9 @@ import { invoke } from '@tauri-apps/api/core';
 import type { CharacterState } from '../types/character';
 import type { EngineStatus, SystemCapabilities } from '../types/engine';
 import { canonicalJoints } from './canonicalRig';
-import { canonicalObj, phase3ExportRecipe } from './canonicalExport';
+import { phase3ExportRecipe } from './canonicalExport';
 import { productionSkinWeights } from './productionSkin';
+import { evaluateMakeHumanGeometry, geometryToObj, resolvedMakeHumanTargets } from './makehumanCharacter';
 
 export interface MakeHumanAssetStatus {
   installed: boolean;
@@ -78,6 +79,8 @@ export async function openInBlender(meshPath: string): Promise<void> {
 }
 
 export async function saveCharacterRecipe(character: CharacterState): Promise<string> {
+  const catalog = character.lane === 'alien' ? [] : await getMakeHumanTargetCatalog();
+  const makeHumanTargets = character.lane === 'alien' ? [] : resolvedMakeHumanTargets(character, catalog);
   return invoke<string>('save_recipe', {
     name: character.name,
     recipe: JSON.stringify(
@@ -85,7 +88,10 @@ export async function saveCharacterRecipe(character: CharacterState): Promise<st
         schema: '3dbuilder.character.v3',
         phase: 3,
         coordinateSystem: 'Y-up / meters / T-pose',
-        topology: { stableVertexIds: true, maxInfluences: 4, subdivisionReady: true },
+        canonical: character.lane === 'alien'
+          ? { family: 'procedural-cage-v1', morphEngine: 'procedural', targets: [] }
+          : { family: 'makehuman-hm08-v1', morphEngine: 'makehuman-targets-v1', targets: makeHumanTargets },
+        topology: { stableVertexIds: true, maxInfluences: 4, subdivisionReady: character.lane === 'alien' },
         rig: { joints: canonicalJoints(character), skin: productionSkinWeights(character) },
         exportedAt: new Date().toISOString(),
         character
@@ -97,9 +103,37 @@ export async function saveCharacterRecipe(character: CharacterState): Promise<st
 }
 
 export async function openCanonicalInBlender(character: CharacterState): Promise<void> {
+  if (character.lane === 'alien') {
+    const { canonicalObj } = await import('./canonicalExport');
+    return invoke<void>('open_character_in_blender', {
+      name: character.name,
+      objText: canonicalObj(character),
+      recipe: JSON.stringify(phase3ExportRecipe(character))
+    });
+  }
+
+  const objText = await getMakeHumanBaseObj();
+  const evaluated = await evaluateMakeHumanGeometry(objText, character);
+  const productionObj = geometryToObj(evaluated.geometry, character.name || 'MakeHumanBody');
+  evaluated.geometry.dispose();
+
+  const recipe = {
+    ...phase3ExportRecipe(character),
+    canonical: {
+      family: 'makehuman-hm08-v1',
+      morphEngine: 'makehuman-targets-v1',
+      targets: evaluated.targets
+    },
+    topology: {
+      stableVertexIds: true,
+      source: 'MakeHuman hm08 visible body',
+      subdivisionReady: false
+    }
+  };
+
   return invoke<void>('open_character_in_blender', {
     name: character.name,
-    objText: canonicalObj(character),
-    recipe: JSON.stringify(phase3ExportRecipe(character))
+    objText: productionObj,
+    recipe: JSON.stringify(recipe)
   });
 }
