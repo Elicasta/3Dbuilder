@@ -17,11 +17,9 @@ import {
   stageReference,
   type BlenderStatus
 } from './lib/desktop';
-import { analyzeMultiView } from './lib/multiview';
 import { applyIdentityFit, solveIdentityFromReferences } from './lib/reconstructionFit';
 import {
   DEFAULT_CHARACTER,
-  type BodyMorphs,
   type CharacterReferences,
   type CharacterState,
   type ReferenceSlot
@@ -82,22 +80,7 @@ export default function App() {
     setStatus(file ? `${slot} reference loaded` : `${slot} reference cleared`);
   }
 
-  function applyFit(patch: Partial<BodyMorphs>, analysis: MultiViewAnalysis) {
-    setCharacter((current) => {
-      const fittedWeight = typeof patch.build === 'number'
-        ? Math.max(0, Math.min(1, (patch.build - 0.78) / 0.44))
-        : current.macro.weight;
-      return {
-        ...current,
-        macro: { ...current.macro, weight: fittedWeight },
-        morphs: { ...current.morphs, ...patch }
-      };
-    });
-    setLastFit(analysis);
-    setStatus(
-      `Multi-view fit applied. Body fit quality ${Math.round(analysis.fitQuality * 100)}%, mask ${Math.round(analysis.confidence * 100)}%.`
-    );
-  }
+
 
   function resetBody() {
     setCharacter((current) => {
@@ -153,7 +136,7 @@ export default function App() {
         setViewMode('canonical');
         setBuildStage('done');
         setStatus(
-          `Identity fit complete · objective ${fit.objective.total.toFixed(3)} · cross-view ${Math.round(fit.analysis.crossViewConsistency * 100)}%. Neural reconstruction is now optional refinement.`
+          `Identity fit complete · loss ${fit.objective.total.toFixed(3)}${fit.optimization ? ` · model ${fit.optimization.initialLoss.toFixed(3)}→${fit.optimization.bestLoss.toFixed(3)} in ${fit.optimization.iterations} passes` : ''}.`
         );
         return;
       }
@@ -283,7 +266,7 @@ export default function App() {
           {workspaceMode === 'fit' ? (
             <>
               <ReferenceUploader references={references} onSelect={handleReference} />
-              <MultiViewFitPanel references={references} onFit={applyFit} />
+              <MultiViewFitPanel references={references} />
               <section className="panel workflow-note">
                 <div className="panel-header"><div><h2>Matching workflow</h2><p>Use a neutral T-pose when possible. Front and back constrain width; side constrains depth. The result stays editable in Character.</p></div></div>
               </section>
