@@ -26,11 +26,11 @@ export interface IdentityFit {
   optimization:OptimizationReport|null;
   analysis:MultiViewAnalysis;
 }
-const OPT_KEYS=['shoulders','chest','waist','hips','chestDepth','waistDepth','hipDepth'] as const;
+const OPT_KEYS=['shoulders','chest','waist','hips','chestDepth','hipDepth'] as const;
 type OptKey=typeof OPT_KEYS[number];
 const LIMITS:Record<OptKey,[number,number]>={
   shoulders:[.82,1.18],chest:[.80,1.20],waist:[.80,1.20],hips:[.80,1.20],
-  chestDepth:[.78,1.22],waistDepth:[.78,1.22],hipDepth:[.78,1.22]
+  chestDepth:[.78,1.22],hipDepth:[.78,1.22]
 };
 function clampKey(key:OptKey,value:number){const [lo,hi]=LIMITS[key];return Math.max(lo,Math.min(hi,value));}
 function observation(view:'front'|'side'|'back',v:ViewAnalysis):ReconstructionObservation{
@@ -52,7 +52,7 @@ async function modelResidual(obj:string,character:CharacterState,analysis:MultiV
   finally{evaluated.geometry.dispose();}
 }
 function correctionFor(key:OptKey,r:ProfileResidual){
-  const map:Record<OptKey,number>={shoulders:r.shoulder,chest:r.chest,waist:r.waist,hips:r.hip,chestDepth:r.chestDepth,waistDepth:r.waistDepth,hipDepth:r.hipDepth};
+  const map:Record<OptKey,number>={shoulders:r.shoulder,chest:r.chest,waist:r.waist,hips:r.hip,chestDepth:r.chestDepth,hipDepth:r.hipDepth};
   return map[key];
 }
 async function optimizeBody(obj:string,seed:CharacterState,analysis:MultiViewAnalysis){
