@@ -57,7 +57,7 @@ export default function ReferenceUploader({ references, onSelect }: ReferenceUpl
       <div className="panel-header">
         <div>
           <h2>References</h2>
-          <p>Front, side, and back become the reconstruction inputs.</p>
+          <p>Front, side, and back estimate one shared editable character.</p>
         </div>
       </div>
 

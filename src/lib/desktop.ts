@@ -161,6 +161,30 @@ export async function openCanonicalInBlender(character: CharacterState): Promise
 
   if (!character.appearance.hairEnabled) {
     selectedAssets = selectedAssets.filter((path) => !isHair(path));
+  } else if (!selectedAssets.some(isHair)) {
+    try {
+      const catalog = await getMakeHumanAssetCatalog();
+      const styleTerms: Record<string, string[]> = {
+        buzz: ['buzz', 'shaved', 'short'],
+        short: ['short', 'crew', 'male'],
+        sidePart: ['side', 'part', 'short'],
+        curly: ['curl', 'curly', 'wave'],
+        afro: ['afro', 'coily', 'curl'],
+        bob: ['bob', 'medium'],
+        long: ['long', 'female'],
+        ponytail: ['pony', 'tail'],
+        bun: ['bun', 'updo'],
+        braids: ['braid', 'cornrow']
+      };
+      const hairAssets = catalog.filter((item) => item.kind !== 'material' && isHair(item.relativePath));
+      const terms = styleTerms[character.appearance.hairStyle] ?? [];
+      const installed =
+        hairAssets.find((item) => terms.some((term) => item.relativePath.toLowerCase().includes(term))) ??
+        hairAssets[0];
+      if (installed) selectedAssets.push(installed.relativePath);
+    } catch {
+      // Export stays deterministic when no installed hair asset exists.
+    }
   }
 
   if (character.anatomy.mode === 'off') {
