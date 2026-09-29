@@ -129,8 +129,8 @@ export async function saveCharacterRecipe(character: CharacterState): Promise<st
     schema:'3dbuilder.character.v5',phase:5,coordinateSystem:'Y-up / meters / T-pose',
     canonical:makeHuman?{family:'makehuman-hm08-v1',morphEngine:'makehuman-targets-v1',targets:makeHumanTargets}:{family:'procedural-cage-v1',morphEngine:'procedural',targets:[]},
     topology,
-    materials:{body:{uvSet:'UV0',textureResolution:character.renderTarget==='unreal'?4096:2048,pbrSlots:['BaseColor','Normal','Roughness','Metallic','AO'],skin:{baseColor:character.appearance.skin,secondary:character.appearance.skinSecondary,roughness:character.appearance.skinRoughness,subsurfaceIntent:character.appearance.skinSubsurface}},separateObjects:['eyes','teeth','tongue','hair','wardrobe']},
-    wardrobe:{slots:character.wardrobe,basePresentation:'underwear/minimal-clothing'},rig,
+    materials:{body:{uvSet:'UV0',textureResolution:character.renderTarget==='unreal'?4096:2048,pbrSlots:['BaseColor','Normal','Roughness','Metallic','AO'],skin:{baseColor:character.appearance.skin,secondary:character.appearance.skinSecondary,roughness:character.appearance.skinRoughness,subsurfaceIntent:character.appearance.skinSubsurface,specular:character.appearance.skinSpecular,oiliness:character.appearance.skinOiliness,poreDetail:character.appearance.poreDetail}},eyes:{iris:character.appearance.eyes,sclera:character.appearance.sclera,pupilScale:character.appearance.eyePupilScale,limbalRing:character.appearance.eyeLimbalRing,wetness:character.appearance.eyeWetness},hair:{color:character.appearance.hair,gloss:character.appearance.hairGloss},separateObjects:['eyes','teeth','tongue','hair','wardrobe']},
+    details:character.details,wardrobe:{slots:character.wardrobe,equippedAssets:character.equippedAssets,basePresentation:'body'},rig,
     production:{neutralPose:'T-pose',requiresDeformationQA:true,requiresFacialRig:true,requiresLODValidation:true,requiresEngineImportValidation:true},
     exportedAt:new Date().toISOString(),character
   },null,2)});
