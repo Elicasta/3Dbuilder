@@ -1,4 +1,4 @@
-import type { BodyMorphs } from '../types/character';
+import type { BodyMorphs, CharacterLane } from '../types/character';
 import type { MakeHumanTargetDelta } from './makehumanTarget';
 
 export interface ResolvedMorphTarget {
@@ -40,6 +40,82 @@ const MORPH_TARGETS: Partial<Record<keyof BodyMorphs, Direction>> = {
   armThickness: { stems: ['armslegs/l-upperarm-scale-horiz', 'armslegs/r-upperarm-scale-horiz', 'armslegs/l-lowerarm-scale-horiz', 'armslegs/r-lowerarm-scale-horiz'] },
   legThickness: { stems: ['armslegs/l-upperleg-scale-horiz', 'armslegs/r-upperleg-scale-horiz', 'armslegs/l-lowerleg-scale-horiz', 'armslegs/r-lowerleg-scale-horiz'] }
 };
+
+
+type DiscreteWeight = { value: string; weight: number };
+
+function triangle(value: number, low: string, mid: string, high: string): DiscreteWeight[] {
+  const v = Math.max(0, Math.min(1, value));
+  if (v <= 0.5) {
+    return [
+      { value: low, weight: 1 - v * 2 },
+      { value: mid, weight: v * 2 }
+    ].filter((entry) => entry.weight > 0.0001);
+  }
+  return [
+    { value: mid, weight: (1 - v) * 2 },
+    { value: high, weight: (v - 0.5) * 2 }
+  ].filter((entry) => entry.weight > 0.0001);
+}
+
+function exactCatalogPath(catalog: readonly string[], relative: string): string | null {
+  const wanted = relative.toLowerCase();
+  return catalog.find((path) => path.toLowerCase() === wanted) ?? null;
+}
+
+/**
+ * Resolve MakeHuman's native macro target blend for an adult character.
+ * The neutral hm08 OBJ is pre-morph. A production character therefore needs
+ * macrodetails (sex/race/age) plus universal weight/muscle targets before local
+ * modeling targets are layered on top.
+ */
+export function resolveMakeHumanMacroTargets(
+  lane: CharacterLane,
+  morphs: BodyMorphs,
+  catalog: readonly string[]
+): ResolvedMorphTarget[] {
+  if (lane === 'alien') return [];
+
+  const sex = lane === 'female' ? 'female' : 'male';
+  const result = new Map<string, number>();
+  const add = (relative: string, weight: number) => {
+    if (weight <= 0.0001) return;
+    const path = exactCatalogPath(catalog, relative);
+    if (path) result.set(path, (result.get(path) ?? 0) + weight);
+  };
+
+  // MakeHuman's default ethnicity is the equal blend of its three macro races.
+  for (const race of ['caucasian', 'asian', 'african']) {
+    add(`macrodetails/${race}-${sex}-young.target`, 1 / 3);
+  }
+
+  // "Build" is our compact UI control for MakeHuman's weight + muscle pair.
+  // 1.0 is neutral, the profile range maps to the complete MakeHuman macro span.
+  const build01 = Math.max(0, Math.min(1, (morphs.build - 0.68) / (1.38 - 0.68)));
+  const muscles = triangle(build01, 'minmuscle', 'averagemuscle', 'maxmuscle');
+  const weights = triangle(build01, 'minweight', 'averageweight', 'maxweight');
+
+  for (const muscle of muscles) {
+    for (const weight of weights) {
+      const blend = muscle.weight * weight.weight;
+      add(`macrodetails/universal-${sex}-young-${muscle.value}-${weight.value}.target`, blend);
+
+      // Height and proportions are dependency-aware MakeHuman macro targets.
+      const height01 = Math.max(0, Math.min(1, (morphs.height - 0.78) / (1.24 - 0.78)));
+      const height = triangle(height01, 'minheight', 'averageheight', 'maxheight');
+      for (const h of height) {
+        if (h.value !== 'averageheight') {
+          add(`macrodetails/height/${sex}-young-${muscle.value}-${weight.value}-${h.value}.target`, blend * h.weight);
+        }
+      }
+
+      // Keep neutral regular proportions at 1.0. Torso/limb sliders provide
+      // explicit proportion editing rather than silently changing this macro.
+    }
+  }
+
+  return [...result].map(([path, weight]) => ({ path, weight }));
+}
 
 function findDirectionalTarget(catalog: readonly string[], stem: string, positive: boolean): string | null {
   const suffix = positive ? '-incr.target' : '-decr.target';
