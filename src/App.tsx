@@ -175,7 +175,7 @@ export default function App() {
   async function openCanonicalCharacter() {
     try {
       await openCanonicalInBlender(character);
-      setStatus('Canonical Phase 2 character opened in Blender with humanoid armature.');
+      setStatus('The current hm08 character opened in Blender with its MakeHuman-derived armature and weights.');
     } catch (error) {
       setStatus(`Could not export canonical character: ${String(error)}`);
     }
@@ -300,29 +300,29 @@ export default function App() {
             <div className="pipeline-step done">
               <span>01</span>
               <div>
-                <strong>Profile</strong>
-                <small>Male · Female · Alien / 3 style families</small>
+                <strong>Canonical model</strong>
+                <small>hm08 topology · native MakeHuman modifiers</small>
               </div>
             </div>
             <div className={buildStage === 'fit' ? 'pipeline-step active' : referenceCount >= 2 || lastFit ? 'pipeline-step done' : 'pipeline-step next'}>
               <span>02</span>
               <div>
-                <strong>Multi-view fit</strong>
-                <small>Front · side · back → canonical morphs</small>
+                <strong>Reference fit</strong>
+                <small>Front · side · back → supported MakeHuman modifiers</small>
               </div>
             </div>
             <div className={buildStage === 'ai' ? 'pipeline-step active' : generatedMesh ? 'pipeline-step done' : 'pipeline-step next'}>
               <span>03</span>
               <div>
-                <strong>AI reconstruction</strong>
-                <small>TripoSR now · CharacterGen / research fusion next</small>
+                <strong>Geometry evidence</strong>
+                <small>TripoSR local candidate · GPU models stay optional</small>
               </div>
             </div>
             <div className="pipeline-step">
               <span>04</span>
               <div>
                 <strong>Rig & export</strong>
-                <small>Canonical mesh + humanoid armature → Blender</small>
+                <small>hm08 mesh · MakeHuman weights → Blender / GLB / FBX</small>
               </div>
             </div>
           </section>
