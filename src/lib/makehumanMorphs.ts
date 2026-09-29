@@ -118,6 +118,25 @@ function triangle(value: number, low: string, mid: string, high: string): Discre
   ].filter((entry) => entry.weight > 0.0001);
 }
 
+export function makeHumanAgeWeights(age: number): DiscreteWeight[] {
+  const value = Math.max(0, Math.min(1, age));
+  if (value < 0.5) {
+    const baby = Math.max(0, 1 - value * 5.3333333333);
+    const young = Math.max(0, (value - 0.1875) * 3.2);
+    const child = Math.max(0, Math.min(1, 5.3333333333 * value) - young);
+    return [
+      { value: 'baby', weight: baby },
+      { value: 'child', weight: child },
+      { value: 'young', weight: young }
+    ].filter((entry) => entry.weight > 0.0001);
+  }
+  const old = Math.max(0, value * 2 - 1);
+  return [
+    { value: 'young', weight: 1 - old },
+    { value: 'old', weight: old }
+  ].filter((entry) => entry.weight > 0.0001);
+}
+
 export function resolveMakeHumanMacroTargets(
   lane: CharacterLane,
   morphs: BodyMorphs,
@@ -126,6 +145,10 @@ export function resolveMakeHumanMacroTargets(
 ): ResolvedMorphTarget[] {
   if (lane === 'alien') return [];
   const sex = lane === 'female' ? 'female' : 'male';
+  const phenotype = macro ?? {
+    age: 0.5, muscle: 0.5, weight: 0.5, proportions: 0.5,
+    african: 1 / 3, asian: 1 / 3, caucasian: 1 / 3
+  };
   const result = new Map<string, number>();
   const add = (relative: string, weight: number) => {
     if (weight <= 0.0001) return;
@@ -133,38 +156,49 @@ export function resolveMakeHumanMacroTargets(
     if (path) result.set(path, (result.get(path) ?? 0) + weight);
   };
 
-  const phenotype = macro ?? {
-    age: 0.5, muscle: 0.5, weight: 0.5, proportions: 0.5,
-    african: 1 / 3, asian: 1 / 3, caucasian: 1 / 3
-  };
-  const raceTotal = Math.max(0.0001, phenotype.african + phenotype.asian + phenotype.caucasian);
-  for (const [race, value] of [
-    ['caucasian', phenotype.caucasian],
-    ['asian', phenotype.asian],
-    ['african', phenotype.african]
-  ] as const) {
-    add(`macrodetails/${race}-${sex}-young.target`, value / raceTotal);
-  }
-
+  const ages = makeHumanAgeWeights(phenotype.age);
   const muscles = triangle(phenotype.muscle, 'minmuscle', 'averagemuscle', 'maxmuscle');
   const weights = triangle(phenotype.weight, 'minweight', 'averageweight', 'maxweight');
   const height01 = Math.max(0, Math.min(1, (morphs.height - 0.78) / 0.46));
   const heights = triangle(height01, 'minheight', 'averageheight', 'maxheight');
+  const ideal = Math.max(0, phenotype.proportions * 2 - 1);
+  const uncommon = Math.max(0, 1 - phenotype.proportions * 2);
+  const raceTotal = Math.max(0.0001, phenotype.african + phenotype.asian + phenotype.caucasian);
+  const races = [
+    ['caucasian', phenotype.caucasian / raceTotal],
+    ['asian', phenotype.asian / raceTotal],
+    ['african', phenotype.african / raceTotal]
+  ] as const;
 
-  for (const muscle of muscles) {
-    for (const weight of weights) {
-      const bodyBlend = muscle.weight * weight.weight;
-      add(
-        `macrodetails/universal-${sex}-young-${muscle.value}-${weight.value}.target`,
-        bodyBlend
-      );
-      for (const height of heights) {
-        // Average height is represented by absence of a height delta. Only one
-        // side of the height macro is active at a time.
-        if (height.value !== 'averageheight') {
+  for (const age of ages) {
+    for (const [race, raceWeight] of races) {
+      add(`macrodetails/${race}-${sex}-${age.value}.target`, age.weight * raceWeight);
+    }
+    for (const muscle of muscles) {
+      for (const weight of weights) {
+        const dependency = age.weight * muscle.weight * weight.weight;
+        add(
+          `macrodetails/universal-${sex}-${age.value}-${muscle.value}-${weight.value}.target`,
+          dependency
+        );
+        for (const height of heights) {
+          if (height.value !== 'averageheight') {
+            add(
+              `macrodetails/height/${sex}-${age.value}-${muscle.value}-${weight.value}-${height.value}.target`,
+              dependency * height.weight
+            );
+          }
+        }
+        if (ideal > 0.0001) {
           add(
-            `macrodetails/height/${sex}-young-${muscle.value}-${weight.value}-${height.value}.target`,
-            bodyBlend * height.weight
+            `macrodetails/proportions/${sex}-${age.value}-${muscle.value}-${weight.value}-idealproportions.target`,
+            dependency * ideal
+          );
+        }
+        if (uncommon > 0.0001) {
+          add(
+            `macrodetails/proportions/${sex}-${age.value}-${muscle.value}-${weight.value}-uncommonproportions.target`,
+            dependency * uncommon
           );
         }
       }
