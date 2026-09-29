@@ -3,6 +3,7 @@ import type { CharacterState } from '../types/character';
 import { getMakeHumanTargetCatalog, getMakeHumanTargetText } from './desktop';
 import { parseMakeHumanObj } from './makehumanObj';
 import { parseMakeHumanTarget, type MakeHumanTargetDelta } from './makehumanTarget';
+import { resolveNativeModifiers } from './makehumanDefinitions';
 import {
   applyTargetDeltasInPlace,
   resolveMakeHumanMacroTargets,
