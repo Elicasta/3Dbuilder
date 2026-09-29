@@ -331,6 +331,79 @@ function CharacterMesh({ character }: { character: CharacterState }) {
         </mesh>
       )}
 
+      {wardrobe.headwear && (
+        <mesh
+          position={[0, headY + 0.36 * head, 0]}
+          scale={[0.72 * head * cranium, 0.26 * head, 0.72 * head * cranium]}
+          castShadow
+        >
+          <sphereGeometry args={[0.78, 32, 20]} />
+          <Surface color={appearance.vest} roughness={0.8} />
+        </mesh>
+      )}
+
+      {wardrobe.eyewear && (
+        <mesh
+          position={[0, headY + 0.02 * head, 0.49 * head * (alien ? cranium : 1)]}
+          scale={[0.48 * head * eyeScale, 0.11 * head, 0.04]}
+          castShadow
+        >
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="#141922" roughness={0.2} metalness={0.08} transparent opacity={0.82} />
+        </mesh>
+      )}
+
+      {wardrobe.gloves && (
+        <>
+          <mesh
+            position={[-armX - 0.86 * morphs.armLength, shoulderY, 0]}
+            scale={[0.2 * morphs.handSize, 0.28 * morphs.handSize, 0.13 * morphs.handSize]}
+            rotation={[0, 0, Math.PI / 2]}
+            castShadow
+          >
+            <boxGeometry args={[1, 1, 1]} />
+            <Surface color={appearance.boots} roughness={0.84} />
+          </mesh>
+          <mesh
+            position={[armX + 0.86 * morphs.armLength, shoulderY, 0]}
+            scale={[0.2 * morphs.handSize, 0.28 * morphs.handSize, 0.13 * morphs.handSize]}
+            rotation={[0, 0, Math.PI / 2]}
+            castShadow
+          >
+            <boxGeometry args={[1, 1, 1]} />
+            <Surface color={appearance.boots} roughness={0.84} />
+          </mesh>
+        </>
+      )}
+
+      {wardrobe.belt && (
+        <mesh
+          position={[0, 0.83 * height, 0]}
+          scale={[0.83 * build * waist, 0.08, 0.56 * build * waistDepth]}
+          castShadow
+        >
+          <boxGeometry args={[1.4, 0.6, 0.9]} />
+          <Surface color={appearance.boots} roughness={0.76} />
+        </mesh>
+      )}
+
+      {wardrobe.gear && (
+        <group position={[0, torsoY - 0.05, 0.54 * build * chestDepth]}>
+          <mesh position={[-0.36, 0.05, 0]} scale={[0.22, 0.28, 0.12]} castShadow>
+            <boxGeometry args={[1, 1, 1]} />
+            <Surface color={appearance.vest} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 0.02, 0]} scale={[0.22, 0.31, 0.12]} castShadow>
+            <boxGeometry args={[1, 1, 1]} />
+            <Surface color={appearance.vest} roughness={0.9} />
+          </mesh>
+          <mesh position={[0.36, 0.05, 0]} scale={[0.22, 0.28, 0.12]} castShadow>
+            <boxGeometry args={[1, 1, 1]} />
+            <Surface color={appearance.vest} roughness={0.9} />
+          </mesh>
+        </group>
+      )}
+
       {appearance.markingsOpacity > 0.02 && (
         <mesh
           position={[0, torsoY + 0.02, 0.5 * chestDepth]}
