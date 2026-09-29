@@ -14,14 +14,18 @@ export default function MultiViewFitPanel({
 }: MultiViewFitPanelProps) {
   const [busy, setBusy] = useState(false);
   const [analysis, setAnalysis] = useState<MultiViewAnalysis | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const count = Object.values(references).filter(Boolean).length;
 
   async function fit() {
     setBusy(true);
+    setError(null);
     try {
       const result = await analyzeMultiView(references);
       setAnalysis(result);
       onFit(result.morphPatch, result);
+    } catch (reason) {
+      setError(String(reason));
     } finally {
       setBusy(false);
     }
@@ -46,6 +50,8 @@ export default function MultiViewFitPanel({
         >
           {busy ? 'Analyzing views…' : count === 3 ? 'Fit from all 3 views' : 'Fit available views'}
         </button>
+
+        {error && <p className="fit-error">{error}</p>}
 
         {analysis && (
           <div className="fit-results">
