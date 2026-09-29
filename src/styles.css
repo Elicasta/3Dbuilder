@@ -418,3 +418,8 @@
 .mh-native-sections button.active{background:#1c2430;color:#e8eef7;box-shadow:inset 2px 0 0 #8295b2}
 .mh-native-controls{min-width:0}
 .mh-native-empty{padding:18px;color:#7e8999;font-size:.72rem;line-height:1.5}
+
+.mh-asset-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}
+.mh-asset-card{display:grid;gap:4px;padding:10px;border:1px solid #29313d;border-radius:8px;background:#0f1319;min-width:0}
+.mh-asset-card strong{font-size:.72rem;color:#dce3ec;text-transform:capitalize}
+.mh-asset-card span{font-size:.58rem;color:#687588;overflow-wrap:anywhere}
