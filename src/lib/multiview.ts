@@ -211,19 +211,25 @@ export async function analyzeMultiView(
   const sideHips = side?.hipWidth ?? null;
   const sideHead = side?.headWidth ?? null;
 
+  // Conservative fitting is intentional here. Silhouette extraction tells us
+  // useful relative proportions, but it is not yet semantic segmentation.
+  // Keep the editable canonical body human while the AI candidate supplies
+  // higher-frequency shape evidence in the viewport.
   const morphPatch = {
-    shoulders: mapRatio(chest, 0.205, 0.76, 1.32),
-    chest: mapRatio(chest, 0.205),
-    chestDepth: mapRatio(sideChest, 0.13, 0.72, 1.34),
-    waist: mapRatio(waist, 0.15),
-    waistDepth: mapRatio(sideWaist, 0.115, 0.72, 1.34),
-    hips: mapRatio(hips, 0.18),
-    hipDepth: mapRatio(sideHips, 0.135, 0.72, 1.34),
-    headScale: mapRatio(head, 0.125, 0.82, 1.24),
-    craniumScale: mapRatio(sideHead, 0.13, 0.82, 1.28),
-    armLength: mapRatio(armSpan, 1.02, 0.84, 1.2),
+    shoulders: mapRatio(chest, 0.205, 0.84, 1.16),
+    chest: mapRatio(chest, 0.205, 0.84, 1.16),
+    chestDepth: mapRatio(sideChest, 0.13, 0.82, 1.18),
+    waist: mapRatio(waist, 0.15, 0.84, 1.16),
+    waistDepth: mapRatio(sideWaist, 0.115, 0.82, 1.18),
+    hips: mapRatio(hips, 0.18, 0.84, 1.16),
+    hipDepth: mapRatio(sideHips, 0.135, 0.82, 1.18),
+    headScale: mapRatio(head, 0.125, 0.9, 1.12),
+    // Do not infer cranium depth aggressively from a side T-pose silhouette:
+    // hair, nose and ears contaminate this measurement.
+    craniumScale: sideHead ? clamp(mapRatio(sideHead, 0.13, 0.94, 1.08), 0.94, 1.08) : 1,
+    armLength: mapRatio(armSpan, 1.02, 0.9, 1.12),
     legLength: legSplit
-      ? clamp((1 - legSplit) / 0.47, 0.82, 1.22)
+      ? clamp((1 - legSplit) / 0.47, 0.9, 1.12)
       : 1
   };
 
@@ -237,8 +243,9 @@ export async function analyzeMultiView(
   if (!front) notes.push('Front view missing.');
   if (!side) notes.push('Side view missing, depth morphs remain approximate.');
   if (!back) notes.push('Back view missing, rear silhouette is not cross-checked.');
+  notes.push('Confidence measures silhouette extraction, not final body-fit accuracy.');
   if (confidence < 0.45) {
-    notes.push('Low silhouette confidence. Plain backgrounds and T-poses will fit better.');
+    notes.push('Low silhouette extraction confidence. Plain backgrounds and T-poses will fit better.');
   }
 
   return {
