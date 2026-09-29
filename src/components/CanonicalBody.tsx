@@ -42,6 +42,8 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
   const indices: number[] = [];
   const armRanges: Array<{ start:number; end:number; sign:number }> = [];
   const legRanges: Array<{ start:number; end:number; sign:number }> = [];
+  const handRanges: Array<{ start:number; end:number; sign:number }> = [];
+  const footRanges: Array<{ start:number; end:number; sign:number }> = [];
   const addEllipsoid=(cx:number,cy:number,cz:number,rx:number,ry:number,rz:number,lat=12,lon=seg)=>{
     // Offset the poles by a tiny latitude ring instead of fanning every
     // longitude into one coincident point. This avoids zero-area pole faces
@@ -150,6 +152,14 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
   };
   addArm(-1); addArm(1);
 
+  const addHand=(sign:number)=>{
+    const start=vertices.length/3;
+    const palmX=sign*(wristX+.18*m.handSize);
+    addEllipsoid(palmX,shoulderY,0,.28*m.handSize*build,.16*m.handSize*build,.12*m.handSize*build,8,16);
+    handRanges.push({start,end:vertices.length/3,sign});
+  };
+  addHand(-1); addHand(1);
+
   const addLeg=(sign:number)=>{
     const limbStart = vertices.length / 3;
     const rings=[
@@ -186,6 +196,13 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
   };
   addLeg(-1); addLeg(1);
 
+  const addFoot=(sign:number)=>{
+    const start=vertices.length/3;
+    addEllipsoid(sign*hipX,footY+.03,.20*m.footSize,.22*m.footSize*build,.14*m.footSize*build,.40*m.footSize,8,16);
+    footRanges.push({start,end:vertices.length/3,sign});
+  };
+  addFoot(-1); addFoot(1);
+
   // Lightweight linear skinning for the generated cage. It is intentionally
   // deterministic and uses the same landmarks as the rig overlay. Phase 3 can
   // replace these procedural weights with authored/corrective weights without
@@ -215,6 +232,15 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
       if(Math.abs(originalX)>elbowX-.08) rotZ(i,pex,pey,elbowAngle);
     }
   }
+  for(const range of handRanges){
+    const side=range.sign;
+    const shoulderAngle=side<0?pose.leftShoulderZ:pose.rightShoulderZ;
+    const elbowAngle=side<0?pose.leftElbowZ:pose.rightElbowZ;
+    const ex=side*elbowX, ey=shoulderY-.045;
+    const dx=ex-side*shoulderX,dy=ey-shoulderY,co=Math.cos(shoulderAngle),si=Math.sin(shoulderAngle);
+    const pex=side*shoulderX+dx*co-dy*si, pey=shoulderY+dx*si+dy*co;
+    for(let v=range.start;v<range.end;v++){const i=v*3;rotZ(i,side*shoulderX,shoulderY,shoulderAngle);rotZ(i,pex,pey,elbowAngle);}
+  }
   for(const range of legRanges){
     const side=range.sign;
     const hipAngle=side<0?pose.leftHipX:pose.rightHipX;
@@ -227,6 +253,15 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
       rotX(i,hipY,0,hipAngle);
       if(originalY<kneeY+.12) rotX(i,ky,kz,kneeAngle);
     }
+  }
+
+  for(const range of footRanges){
+    const side=range.sign;
+    const hipAngle=side<0?pose.leftHipX:pose.rightHipX;
+    const kneeAngle=side<0?pose.leftKneeX:pose.rightKneeX;
+    const ky=hipY+(kneeY-hipY)*Math.cos(hipAngle);
+    const kz=(kneeY-hipY)*Math.sin(hipAngle);
+    for(let v=range.start;v<range.end;v++){const i=v*3;rotX(i,hipY,0,hipAngle);rotX(i,ky,kz,kneeAngle);}
   }
 
   const geometry=new BufferGeometry();
