@@ -4,6 +4,7 @@ import CharacterControls from './components/CharacterControls';
 import EngineLab from './components/EngineLab';
 import MultiViewFitPanel from './components/MultiViewFitPanel';
 import ReferenceUploader from './components/ReferenceUploader';
+import WorkspaceNav, { type WorkspaceId } from './components/WorkspaceNav';
 import { defaultsForLane } from './data/characterProfiles';
 import {
   detectBlender,
@@ -45,6 +46,7 @@ export default function App() {
   const [lastFit, setLastFit] = useState<MultiViewAnalysis | null>(null);
   const [makeHumanObj, setMakeHumanObj] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'canonical' | 'rig' | 'ai' | 'overlay'>('canonical');
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceId>('fit');
 
   useEffect(() => {
     detectBlender()
@@ -247,6 +249,8 @@ export default function App() {
         </div>
       </header>
 
+      <WorkspaceNav value={workspaceMode} onChange={setWorkspaceMode} />
+
       <div className="status-bar">
         <span className="status-dot" />
         <span>{status}</span>
@@ -276,13 +280,21 @@ export default function App() {
 
       <section className="workspace">
         <aside className="inspector">
-          <ReferenceUploader references={references} onSelect={handleReference} />
-          <MultiViewFitPanel references={references} onFit={applyFit} />
-          <CharacterControls
-            character={character}
-            onChange={setCharacter}
-            onReset={resetBody}
-          />
+          {workspaceMode === 'fit' ? (
+            <>
+              <ReferenceUploader references={references} onSelect={handleReference} />
+              <MultiViewFitPanel references={references} onFit={applyFit} />
+              <section className="panel workflow-note">
+                <div className="panel-header"><div><h2>Matching workflow</h2><p>Use a neutral T-pose when possible. Front and back constrain width; side constrains depth. The result stays editable in Character.</p></div></div>
+              </section>
+            </>
+          ) : workspaceMode === 'character' ? (
+            <CharacterControls character={character} onChange={setCharacter} onReset={resetBody} />
+          ) : (
+            <section className="panel workflow-note">
+              <div className="panel-header"><div><h2>Engine configuration</h2><p>The canonical MakeHuman system is always the production base. Reconstruction engines only provide additional evidence.</p></div></div>
+            </section>
+          )}
         </aside>
 
         <div className="stage">
@@ -327,7 +339,7 @@ export default function App() {
             </div>
           </section>
 
-          <EngineLab />
+          {workspaceMode === 'engines' && <EngineLab />}
         </div>
       </section>
     </main>
