@@ -13,6 +13,10 @@ export interface ViewAnalysis {
   ankleWidth: number | null;
   legSplitY: number | null;
   armSpan: number | null;
+  shoulderY: number | null;
+  waistY: number | null;
+  hipY: number | null;
+  silhouetteSymmetry: number;
 }
 
 export interface MultiViewAnalysis {
