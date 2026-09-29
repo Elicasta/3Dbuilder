@@ -104,6 +104,19 @@ Implemented foundation:
 - native character-recipe saving
 - macOS and Windows CI build definitions
 
+Research engine layer now included:
+
+- MPFB / MakeHuman body-prior adapter
+- TripoSR local reconstruction candidate
+- CharacterGen character reconstruction candidate
+- ECON and ICON research lanes
+- InstantMesh alternative reconstruction lane
+- TRELLIS.2 GPU-worker lane
+- cross-platform system capability detection
+- source installer with an allow-listed engine catalog
+
+See `docs/ENGINE_STACK.md`.
+
 Next engine milestone:
 
-**front / side / back reference images → fitted/generated base mesh**
+**front / side / back reference images → multiple reconstruction candidates → canonical fitted base mesh**
