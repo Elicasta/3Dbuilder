@@ -34,6 +34,8 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
 
   const vertices: number[] = [];
   const indices: number[] = [];
+  const armRanges: Array<{ start:number; end:number; sign:number }> = [];
+  const legRanges: Array<{ start:number; end:number; sign:number }> = [];
 
   // A single indexed surface. Torso, arms and legs are stitched through shared
   // junction loops instead of overlapping meshes, so shoulders and hips shade
@@ -69,6 +71,7 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
   for(let r=0;r<torsoStarts.length-1;r++) connectRings(indices,torsoStarts[r],torsoStarts[r+1],seg);
 
   const addArm = (sign:number) => {
+    const limbStart = vertices.length / 3;
     const rings: ArmRing[] = [
       {x:sign*shoulderX*.72,y:shoulderY-.03,ry:.29*armT,rz:.245*armT},
       {x:sign*shoulderX*.88,y:shoulderY+.015,ry:.275*armT,rz:.235*armT},
@@ -106,10 +109,12 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
       const aa=starts[0]+s, an=starts[0]+n;
       indices.push(ta,aa,an,ta,an,tn);
     }
+    armRanges.push({ start: limbStart, end: vertices.length / 3, sign });
   };
   addArm(-1); addArm(1);
 
   const addLeg=(sign:number)=>{
+    const limbStart = vertices.length / 3;
     const rings=[
       {y:hipY+.20,x:sign*hipX,rx:.30*legT,rz:.265*legT},
       {y:hipY+.06,x:sign*hipX,rx:.295*legT,rz:.26*legT},
@@ -140,6 +145,7 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
       if(sign>0 ? Math.max(x0,x1)<0 : Math.min(x0,x1)>0) continue;
       indices.push(pelvis+s,starts[0]+s,starts[0]+n,pelvis+s,starts[0]+n,pelvis+n);
     }
+    legRanges.push({ start: limbStart, end: vertices.length / 3, sign });
   };
   addLeg(-1); addLeg(1);
 
@@ -155,27 +161,34 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
     const y=vertices[i+1]-py,z=vertices[i+2]-pz,co=Math.cos(a),si=Math.sin(a);
     vertices[i+1]=py+y*co-z*si; vertices[i+2]=pz+y*si+z*co;
   };
-  for(let i=0;i<vertices.length;i+=3){
-    const originalX=vertices[i], originalY=vertices[i+1];
-    const side=originalX<0?-1:1;
-    if(Math.abs(originalX)>shoulderX*.64 && originalY>shoulderY-.36){
-      const shoulderAngle=side<0?pose.leftShoulderZ:pose.rightShoulderZ;
+  // Pose only the actual limb vertex blocks. Earlier we selected vertices by
+  // spatial proximity, which accidentally grabbed chest/shoulder and pelvis
+  // vertices and produced the sharp collapsing wedges visible in pose tests.
+  for(const range of armRanges){
+    const side=range.sign;
+    const shoulderAngle=side<0?pose.leftShoulderZ:pose.rightShoulderZ;
+    const elbowAngle=side<0?pose.leftElbowZ:pose.rightElbowZ;
+    const ex=side*elbowX, ey=shoulderY-.045;
+    const dx=ex-side*shoulderX,dy=ey-shoulderY,co=Math.cos(shoulderAngle),si=Math.sin(shoulderAngle);
+    const pex=side*shoulderX+dx*co-dy*si, pey=shoulderY+dx*si+dy*co;
+    for(let v=range.start;v<range.end;v++){
+      const i=v*3;
+      const originalX=vertices[i];
       rotZ(i,side*shoulderX,shoulderY,shoulderAngle);
-      if(Math.abs(originalX)>elbowX-.08){
-        const ex=side*elbowX, ey=shoulderY-.045;
-        const dx=ex-side*shoulderX,dy=ey-shoulderY,co=Math.cos(shoulderAngle),si=Math.sin(shoulderAngle);
-        const pex=side*shoulderX+dx*co-dy*si, pey=shoulderY+dx*si+dy*co;
-        rotZ(i,pex,pey,side<0?pose.leftElbowZ:pose.rightElbowZ);
-      }
-    } else if(originalY<hipY+.24 && Math.abs(originalX)>Math.max(.08,hipX-.22)){
-      const hipAngle=side<0?pose.leftHipX:pose.rightHipX;
+      if(Math.abs(originalX)>elbowX-.08) rotZ(i,pex,pey,elbowAngle);
+    }
+  }
+  for(const range of legRanges){
+    const side=range.sign;
+    const hipAngle=side<0?pose.leftHipX:pose.rightHipX;
+    const kneeAngle=side<0?pose.leftKneeX:pose.rightKneeX;
+    const ky=hipY+(kneeY-hipY)*Math.cos(hipAngle);
+    const kz=(kneeY-hipY)*Math.sin(hipAngle);
+    for(let v=range.start;v<range.end;v++){
+      const i=v*3;
+      const originalY=vertices[i+1];
       rotX(i,hipY,0,hipAngle);
-      if(originalY<kneeY+.12){
-        const kneeAngle=side<0?pose.leftKneeX:pose.rightKneeX;
-        const ky=hipY+(kneeY-hipY)*Math.cos(hipAngle);
-        const kz=(kneeY-hipY)*Math.sin(hipAngle);
-        rotX(i,ky,kz,kneeAngle);
-      }
+      if(originalY<kneeY+.12) rotX(i,ky,kz,kneeAngle);
     }
   }
 
