@@ -31,10 +31,10 @@ function chainWeights(p:[number,number,number],names:JointName[],joints:Map<Join
     return {joint,weight:1/(d*d)};
   }));
 }
-function coreWeights(y:number,joints:Map<JointName,[number,number,number]>){
+function coreWeights(y:number,joints:Map<JointName,[number,number,number]>): VertexInfluence[]{
   const anchors=CORE.map(name=>({name,y:joints.get(name)![1]}));
-  if(y<=anchors[0].y) return [{joint:'pelvis',weight:1}];
-  if(y>=anchors[anchors.length-1].y) return [{joint:'neck',weight:1}];
+  if(y<=anchors[0].y) return [{joint:'pelvis' as JointName,weight:1}];
+  if(y>=anchors[anchors.length-1].y) return [{joint:'neck' as JointName,weight:1}];
   for(let i=0;i<anchors.length-1;i++){
     const a=anchors[i],b=anchors[i+1];
     if(y<=b.y){
@@ -42,7 +42,7 @@ function coreWeights(y:number,joints:Map<JointName,[number,number,number]>){
       return normalize([{joint:a.name,weight:1-t},{joint:b.name,weight:t}]);
     }
   }
-  return [{joint:'chest',weight:1}];
+  return [{joint:'chest' as JointName,weight:1}];
 }
 
 /**
