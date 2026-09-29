@@ -7,6 +7,7 @@ import ReferenceUploader from './components/ReferenceUploader';
 import { defaultsForLane } from './data/characterProfiles';
 import {
   detectBlender,
+  getLatestGeneratedMesh,
   openInBlender,
   runReconstruction,
   saveCharacterRecipe,
@@ -43,6 +44,17 @@ export default function App() {
       .then(setBlender)
       .catch(() => {
         setBlender({ found: false, path: null, platform: 'browser' });
+      });
+
+    getLatestGeneratedMesh()
+      .then((mesh) => {
+        if (mesh) {
+          setGeneratedMesh(mesh);
+          setStatus('Previous AI mesh candidate restored. Ready to inspect in Blender.');
+        }
+      })
+      .catch(() => {
+        // No previous candidate is a normal first-run state.
       });
   }, []);
 
