@@ -122,6 +122,47 @@ fn python_path() -> Option<PathBuf> {
     }
 }
 
+fn compatible_engine_python() -> Option<PathBuf> {
+    // TripoSR/PyMCubes is not ready for Python 3.14. Prefer a known-good
+    // interpreter instead of blindly using the newest system Python.
+    #[cfg(target_os = "windows")]
+    let candidates = ["python3.12", "python3.11", "python3.10", "python"];
+
+    #[cfg(not(target_os = "windows"))]
+    let candidates = ["python3.12", "python3.11", "python3.10", "python3"];
+
+    for candidate in candidates {
+        if let Some(path) = find_executable(candidate, candidate) {
+            let output = Command::new(&path)
+                .args(["-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"])
+                .output()
+                .ok()?;
+            if output.status.success() {
+                let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if matches!(version.as_str(), "3.10" | "3.11" | "3.12") {
+                    return Some(path);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn venv_is_compatible(python: &Path) -> bool {
+    let output = match Command::new(python)
+        .args(["-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"])
+        .output()
+    {
+        Ok(output) if output.status.success() => output,
+        _ => return false,
+    };
+
+    matches!(
+        String::from_utf8_lossy(&output.stdout).trim(),
+        "3.10" | "3.11" | "3.12"
+    )
+}
+
 fn git_path() -> Option<PathBuf> {
     find_executable("git", "git.exe")
 }
@@ -281,18 +322,30 @@ fn prepare_engine_runtime(app: tauri::AppHandle, id: String) -> Result<String, S
         return Err("Install the TripoSR source first.".to_string());
     }
 
-    let system_python = python_path().ok_or_else(|| "Python 3 was not found.".to_string())?;
+    let system_python = compatible_engine_python().ok_or_else(|| {
+        "TripoSR needs Python 3.10, 3.11, or 3.12. Python 3.14 is currently incompatible with its PyMCubes dependency. Install Python 3.12 and retry Prepare runtime.".to_string()
+    })?;
     let python = venv_python(&root);
+    let venv = root.join("venv");
+
+    // Automatically discard an old environment made with an unsupported
+    // interpreter. This fixes machines where 3D Builder first picked Python 3.14.
+    if python.exists() && !venv_is_compatible(&python) {
+        fs::remove_dir_all(&venv)
+            .map_err(|error| format!("Could not replace incompatible Python environment: {error}"))?;
+    }
 
     if !python.exists() {
         let mut command = Command::new(system_python);
-        command.args(["-m", "venv"]).arg(root.join("venv"));
-        run_checked(&mut command, "Create Python environment")?;
+        command.args(["-m", "venv"]).arg(&venv);
+        run_checked(&mut command, "Create Python 3.10-3.12 environment")?;
     }
 
     let mut upgrade = Command::new(&python);
-    upgrade.args(["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"]);
-    run_checked(&mut upgrade, "Upgrade Python tooling")?;
+    // PyMCubes still imports pkg_resources while building. Newer setuptools
+    // releases removed that compatibility path, so keep a compatible toolchain.
+    upgrade.args(["-m", "pip", "install", "--upgrade", "pip", "wheel", "setuptools<81"]);
+    run_checked(&mut upgrade, "Prepare compatible Python tooling")?;
 
     let mut torch = Command::new(&python);
     torch.args(["-m", "pip", "install", "torch", "torchvision"]);
