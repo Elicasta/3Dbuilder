@@ -34,7 +34,8 @@ export function resolvedMakeHumanTargets(
   const merged = new Map<string, number>();
   for (const target of [
     ...resolveMakeHumanMacroTargets(character.lane, character.morphs, catalog, character.macro),
-    ...resolveMakeHumanMorphTargets(character.morphs, catalog)
+    ...resolveMakeHumanMorphTargets(character.morphs, catalog),
+    ...resolveNativeModifiers(character.nativeModifiers ?? {}, catalog)
   ]) {
     merged.set(target.path, (merged.get(target.path) ?? 0) + target.weight);
   }
