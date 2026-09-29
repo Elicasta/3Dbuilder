@@ -17,7 +17,7 @@ import {
   stageReference,
   type BlenderStatus
 } from './lib/desktop';
-import { applyIdentityFit, solveIdentityFromReferences } from './lib/reconstructionFit';
+import { applyIdentityFit, solveIdentityFromAnalysis, solveIdentityFromReferences } from './lib/reconstructionFit';
 import {
   DEFAULT_CHARACTER,
   type CharacterReferences,
@@ -43,6 +43,7 @@ export default function App() {
   const [building, setBuilding] = useState(false);
   const [buildStage, setBuildStage] = useState<'idle' | 'fit' | 'ai' | 'done' | 'fallback'>('idle');
   const [lastFit, setLastFit] = useState<MultiViewAnalysis | null>(null);
+  const [lastDiagnostic, setLastDiagnostic] = useState<MultiViewAnalysis | null>(null);
   const [makeHumanObj, setMakeHumanObj] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'canonical' | 'rig' | 'ai' | 'overlay'>('canonical');
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceId>('fit');
@@ -77,6 +78,7 @@ export default function App() {
 
   function handleReference(slot: ReferenceSlot, file: File | null) {
     setReferences((current) => ({ ...current, [slot]: file }));
+    setLastDiagnostic(null);
     setStatus(file ? `${slot} reference loaded` : `${slot} reference cleared`);
   }
 
@@ -132,7 +134,9 @@ export default function App() {
 
       if (referenceCount >= 2) {
         setStatus(`Solving one shared identity from ${referenceCount} views…`);
-        const fit = await solveIdentityFromReferences(references, makeHumanObj ?? undefined, character);
+        const fit = lastDiagnostic
+          ? await solveIdentityFromAnalysis(lastDiagnostic, makeHumanObj ?? undefined, character)
+          : await solveIdentityFromReferences(references, makeHumanObj ?? undefined, character);
         setCharacter((current) => applyIdentityFit(current, fit));
         setLastFit(fit.analysis);
         setViewMode('canonical');
@@ -268,7 +272,7 @@ export default function App() {
           {workspaceMode === 'fit' ? (
             <>
               <ReferenceUploader references={references} onSelect={handleReference} />
-              <MultiViewFitPanel references={references} />
+              <MultiViewFitPanel references={references} onAnalysis={setLastDiagnostic} />
               <section className="panel workflow-note">
                 <div className="panel-header"><div><h2>Matching workflow</h2><p>Use a neutral T-pose when possible. Front and back constrain width; side constrains depth. The result stays editable in Character.</p></div></div>
               </section>
