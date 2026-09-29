@@ -73,7 +73,7 @@ function FallbackHair({ character }: { character:CharacterState }) {
 }
 
 function AnatomyFallback({character,anchor}:{character:CharacterState;anchor:[number,number,number]}) {
-  if(character.lane==='alien'||character.anatomy.mode==='off') return null;
+  if(character.lane==='alien'||character.anatomy.mode==='off'||character.macro.age<.5) return null;
   const detailed=character.anatomy.mode==='detailed';
   const [x,y,z]=anchor;
   const skin=character.appearance.skinSecondary||character.appearance.skin;
@@ -81,18 +81,20 @@ function AnatomyFallback({character,anchor}:{character:CharacterState;anchor:[nu
     const length=.09+(character.anatomy.penisLength??.5)*.18;
     const radius=.018+(character.anatomy.penisGirth??.5)*.022;
     const testicle=.032+(character.anatomy.testicleSize??.5)*.026;
+    const glans=.85+(character.anatomy.glansSize??.5)*.35;
+    const drop=.055+(character.anatomy.scrotumDrop??.5)*.055;
     return <group position={[x,y+.07,z+.16]}>
       <mesh position={[0,-.015,length*.48]} rotation={[Math.PI/2,0,0]} castShadow>
         <cylinderGeometry args={[radius*.86,radius,length,20]}/>
         <meshStandardMaterial color={skin} roughness={.72}/>
       </mesh>
-      {detailed && <mesh position={[0,-.015,length+.005]} scale={[radius*1.08,radius*1.08,radius*1.18]} castShadow>
+      {detailed && <mesh position={[0,-.015,length+.005]} scale={[radius*1.08*glans,radius*1.08*glans,radius*1.18*glans]} castShadow>
         <sphereGeometry args={[1,20,14]}/><meshStandardMaterial color={skin} roughness={.7}/>
       </mesh>}
-      <mesh position={[-testicle*.62,-.075,.015]} scale={[testicle*.8,testicle,testicle*.82]} castShadow>
+      <mesh position={[-testicle*.62,-drop,.015]} scale={[testicle*.8,testicle,testicle*.82]} castShadow>
         <sphereGeometry args={[1,20,14]}/><meshStandardMaterial color={skin} roughness={.76}/>
       </mesh>
-      <mesh position={[testicle*.62,-.075,.015]} scale={[testicle*.8,testicle,testicle*.82]} castShadow>
+      <mesh position={[testicle*.62,-drop,.015]} scale={[testicle*.8,testicle,testicle*.82]} castShadow>
         <sphereGeometry args={[1,20,14]}/><meshStandardMaterial color={skin} roughness={.76}/>
       </mesh>
     </group>;
@@ -102,7 +104,12 @@ function AnatomyFallback({character,anchor}:{character:CharacterState;anchor:[nu
   const outer=.018+(character.anatomy.labiaMajora??.5)*.02;
   const inner=.009+(character.anatomy.labiaMinora??.5)*.014;
   const clitoral=.006+(character.anatomy.clitoralSize??.5)*.009;
+  const opening=.007+(character.anatomy.vaginalOpening??.5)*.010;
+  const mons=.025+(character.anatomy.monsPubis??.5)*.035;
   return <group position={[x,y+.08,z+.155]}>
+    {detailed && <mesh position={[0,.065,-.015]} scale={[mons*1.25,mons*.72,mons]} castShadow>
+      <sphereGeometry args={[1,18,12]}/><meshStandardMaterial color={skin} roughness={.75}/>
+    </mesh>}
     <mesh position={[-width*.52,-.018,0]} scale={[outer,.065,.024]} rotation={[0,0,-.08]} castShadow>
       <sphereGeometry args={[1,20,14]}/><meshStandardMaterial color={skin} roughness={.73}/>
     </mesh>
@@ -118,6 +125,9 @@ function AnatomyFallback({character,anchor}:{character:CharacterState;anchor:[nu
       </mesh>
       <mesh position={[0,.043,.032]} scale={[clitoral,clitoral*.8,clitoral]} castShadow>
         <sphereGeometry args={[1,16,10]}/><meshStandardMaterial color={character.appearance.lips} roughness={.68}/>
+      </mesh>
+      <mesh position={[0,-.055,.034]} scale={[opening*.72,opening,opening*.32]} castShadow>
+        <sphereGeometry args={[1,16,10]}/><meshStandardMaterial color={character.appearance.lips} roughness={.76}/>
       </mesh>
     </>}
   </group>;
@@ -195,6 +205,7 @@ export default function MakeHumanBody({ objText, character, poseName='bind' }: {
         const lower=asset.path.toLowerCase();
         const material=asset.materialText ? parseMakeHumanMaterial(asset.materialText) : null;
         const fallback=isHairPath(asset.path) ? character.appearance.hair :
+          isAnatomyPath(asset.path) ? character.appearance.skinSecondary :
           lower.includes('eye') ? character.appearance.sclera :
           lower.includes('teeth') ? '#e7e1d7' : character.appearance.shirt;
         return <mesh key={asset.path} geometry={asset.geometry} castShadow receiveShadow>
