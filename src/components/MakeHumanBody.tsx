@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BufferGeometry } from 'three';
 import type { CharacterState } from '../types/character';
-import { getMakeHumanAssetBundle, getMakeHumanRigText } from '../lib/desktop';
+import { getMakeHumanAssetBundle, getMakeHumanAssetCatalog, getMakeHumanRigText } from '../lib/desktop';
 import { fittedAssetFromTexts, normalizeAssetWithBody } from '../lib/makehumanAsset';
 import { evaluateMakeHumanGeometry, normalizeMakeHumanForViewport } from '../lib/makehumanCharacter';
 import { parseMakeHumanMaterial } from '../lib/makehumanMaterial';
@@ -24,7 +24,19 @@ export default function MakeHumanBody({ objText, character, poseName='bind' }: {
     let cancelled=false;
     void evaluateMakeHumanGeometry(objText,character).then(async ({geometry:body})=>{
       // MHCLO fitting must happen against the evaluated body before viewport normalization.
-      const fitted=await Promise.all((character.equippedAssets ?? []).map(async(path)=>{
+      const isHair=(path:string)=>{const lower=path.toLowerCase();return (lower.includes('/hair/')||lower.includes('hair'))&&!lower.includes('eyebrow')&&!lower.includes('brow')};
+      let selected=[...(character.equippedAssets ?? [])];
+      if(!character.appearance.hairEnabled) selected=selected.filter(path=>!isHair(path));
+      else if(!selected.some(isHair)){
+        try{
+          const catalog=await getMakeHumanAssetCatalog();
+          const auto=catalog.find(item=>item.kind!=='material'&&isHair(item.relativePath));
+          if(auto) selected.push(auto.relativePath);
+        }catch{
+          // Hair remains optional if the local MakeHuman asset catalog is unavailable.
+        }
+      }
+      const fitted=await Promise.all(selected.map(async(path)=>{
         const bundle=await getMakeHumanAssetBundle(path);
         const asset=fittedAssetFromTexts(bundle.definitionText,bundle.objText,body);
         normalizeAssetWithBody(asset,body);
