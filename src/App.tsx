@@ -40,7 +40,7 @@ export default function App() {
   const [building, setBuilding] = useState(false);
   const [buildStage, setBuildStage] = useState<'idle' | 'fit' | 'ai' | 'done' | 'fallback'>('idle');
   const [lastFit, setLastFit] = useState<MultiViewAnalysis | null>(null);
-  const [viewMode, setViewMode] = useState<'canonical' | 'ai' | 'overlay'>('canonical');
+  const [viewMode, setViewMode] = useState<'canonical' | 'rig' | 'ai' | 'overlay'>('canonical');
 
   useEffect(() => {
     detectBlender()
