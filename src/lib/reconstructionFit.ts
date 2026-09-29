@@ -32,7 +32,7 @@ export interface IdentityFit {
 export async function solveIdentityFromReferences(references: CharacterReferences): Promise<IdentityFit> {
   const analysis=await analyzeMultiView(references);
   const entries=(['front','side','back'] as const)
-    .map((view)=>[view,analysis.views[view]] as const)
+    .map((view)=>[view,view === 'front' ? analysis.front : view === 'side' ? analysis.side : analysis.back] as const)
     .filter((entry): entry is [typeof entry[0],ViewAnalysis]=>Boolean(entry[1]));
   const observations=entries.map(([view,value])=>({
     view,
