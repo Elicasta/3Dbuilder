@@ -82,4 +82,19 @@ describe('MakeHuman modifier resolver', () => {
     expect(targets.some((target) => target.path.endsWith('-maxheight.target'))).toBe(true);
     expect(targets.some((target) => target.path.endsWith('-minheight.target'))).toBe(false);
   });
+  it('uses MakeHuman breast cup/firmness macro targets for female characters', () => {
+    const catalog = [
+      'macrodetails/caucasian-female-young.target',
+      'macrodetails/asian-female-young.target',
+      'macrodetails/african-female-young.target',
+      'macrodetails/universal-female-young-averagemuscle-averageweight.target',
+      'breast/female-young-averagemuscle-averageweight-maxcup-maxfirmness.target'
+    ];
+    const targets = resolveMakeHumanMacroTargets('female', BASE_MORPHS, catalog, {
+      age:.5,muscle:.5,weight:.5,proportions:.5,breastSize:1,breastFirmness:1,
+      african:1/3,asian:1/3,caucasian:1/3
+    });
+    expect(targets.some((target)=>target.path.startsWith('breast/female-young-'))).toBe(true);
+  });
+
 });
