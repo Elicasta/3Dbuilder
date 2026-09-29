@@ -96,7 +96,11 @@ function buildBody(character: CharacterState) {
       const n=(s+1)%seg;
       const ca=Math.cos(s/seg*Math.PI*2);
       const cn=Math.cos(n/seg*Math.PI*2);
-      if(sign>0 ? (ca>-.18 || cn>-.18) : (ca<.18 || cn<.18)) continue;
+      // The torso ring is parameterized with x = cos(angle) * radius.
+      // Keep the hemisphere on the SAME side as the arm. The previous test was
+      // reversed, which stitched each arm toward the opposite side of the chest
+      // and produced the pinched/cross-body shoulder visible in profile views.
+      if(sign>0 ? (ca<.18 || cn<.18) : (ca>-.18 || cn>-.18)) continue;
       const ta=torsoStart+s, tn=torsoStart+n;
       const aa=starts[0]+s, an=starts[0]+n;
       indices.push(ta,aa,an,ta,an,tn);
