@@ -4,7 +4,8 @@ import {
   type BodyMorphs,
   type CharacterLane,
   type CharacterState,
-  type CharacterStyle
+  type CharacterStyle,
+  type MakeHumanMacroState
 } from '../types/character';
 
 export interface MorphControl {
@@ -151,13 +152,13 @@ const LANE_MORPHS: Record<CharacterLane, Partial<BodyMorphs>> = {
     shoulders:1.10, chest:1.06, chestDepth:1.05, waist:1.00, hips:.94, hipDepth:.98,
     armThickness:1.05, legThickness:1.03, neckThickness:1.07,
     faceWidth:1.03, jawWidth:1.08, jawHeight:1.03, cheekWidth:1.03,
-    bust:.78, bustProjection:.78
+    bust:1, bustProjection:1
   },
   female: {
     shoulders:.94, chest:.96, chestDepth:.98, waist:.91, hips:1.09, hipDepth:1.06,
     armThickness:.94, legThickness:.98, neckThickness:.93,
     faceWidth:.98, jawWidth:.92, jawHeight:.97, cheekWidth:1.02,
-    bust:1.10, bustProjection:1.10
+    bust:1, bustProjection:1
   },
   alien: {
     height: 1.06,
@@ -174,6 +175,12 @@ const LANE_MORPHS: Record<CharacterLane, Partial<BodyMorphs>> = {
     jawWidth: 0.82,
     eyeScale: 1.48
   }
+};
+
+const LANE_MACRO: Record<CharacterLane, Partial<MakeHumanMacroState>> = {
+  male: { breastSize:.5, breastFirmness:.5 },
+  female: { breastSize:.62, breastFirmness:.72 },
+  alien: {}
 };
 
 const LANE_APPEARANCE: Record<CharacterLane, Partial<AppearanceState>> = {
@@ -243,6 +250,10 @@ export function defaultsForLane(
     lane,
     style,
     renderTarget: style === 'realHuman' ? 'unreal' : current.renderTarget,
+    macro: {
+      ...current.macro,
+      ...LANE_MACRO[lane]
+    },
     morphs: {
       ...BASE_MORPHS,
       ...LANE_MORPHS[lane]
