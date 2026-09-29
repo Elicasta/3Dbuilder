@@ -742,15 +742,36 @@ for j in joints:
     if parent and parent in bones:
         bones[j['name']].parent=bones[parent]
 bpy.ops.object.mode_set(mode='OBJECT')
-body.select_set(True)
-arm.select_set(True)
-bpy.context.view_layer.objects.active=arm
-try:
-    bpy.ops.object.parent_set(type='ARMATURE_AUTO')
-except Exception as exc:
-    print('3D Builder automatic weights warning:', exc)
-arm['3dbuilder_schema']=data.get('schema','3dbuilder.character.v2')
+# Phase 3 imports deterministic weights authored by 3D Builder. Blender's
+# automatic weights are only a fallback for legacy Phase 2 recipes.
+skin=data.get('rig',{}).get('skin',[])
+if skin:
+    for vg in list(body.vertex_groups):
+        body.vertex_groups.remove(vg)
+    groups={}
+    for entry in skin:
+        vertex=int(entry['vertex'])
+        for influence in entry.get('influences',[]):
+            name=influence['joint']
+            group=groups.get(name)
+            if group is None:
+                group=body.vertex_groups.new(name=name)
+                groups[name]=group
+            group.add([vertex],float(influence['weight']),'REPLACE')
+    modifier=body.modifiers.new(name='3DBuilder Armature',type='ARMATURE')
+    modifier.object=arm
+    body.parent=arm
+else:
+    body.select_set(True)
+    arm.select_set(True)
+    bpy.context.view_layer.objects.active=arm
+    try:
+        bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+    except Exception as exc:
+        print('3D Builder automatic weights warning:', exc)
+arm['3dbuilder_schema']=data.get('schema','3dbuilder.character.v3')
 arm['3dbuilder_character']=data.get('character',{}).get('name','Character')
+arm['3dbuilder_phase']=int(data.get('phase',3))
 bpy.context.view_layer.objects.active=body
 body.select_set(True)
 "#;
