@@ -30,6 +30,10 @@ export async function getEngineStatuses(): Promise<EngineStatus[]> {
   return invoke<EngineStatus[]>('engine_statuses');
 }
 
+export async function getMakeHumanBaseObj(): Promise<string> {
+  return invoke<string>('makehuman_base_obj');
+}
+
 export async function getMakeHumanAssetStatus(): Promise<MakeHumanAssetStatus> {
   return invoke<MakeHumanAssetStatus>('makehuman_asset_status');
 }
