@@ -113,6 +113,7 @@ export default function App() {
           caucasian: 1 / 3
         },
         nativeModifiers: {},
+        equippedAssets: [],
         morphs: reset.morphs,
         appearance: reset.appearance
       };
