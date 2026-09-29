@@ -50,7 +50,7 @@ export async function solveIdentityFromReferences(references: CharacterReference
   if(typeof build==='number') macroPatch.weight=Math.max(0,Math.min(1,(build-.78)/.44));
 
   const silhouette=1-analysis.fitQuality;
-  const crossView=1-analysis.crossViewConsistency;
+  const crossView=1-analysis.fitQuality;
   const confidence=analysis.confidence;
   return {
     version:1,
