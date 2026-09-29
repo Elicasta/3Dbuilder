@@ -114,15 +114,6 @@ function Limb({
   );
 }
 
-function Joint({ position, scale, color, roughness }: { position: [number, number, number]; scale: [number, number, number]; color: string; roughness?: number }) {
-  return (
-    <mesh position={position} scale={scale} castShadow>
-      <sphereGeometry args={[0.3, 28, 20]} />
-      <Surface color={color} roughness={roughness} />
-    </mesh>
-  );
-}
-
 function Hand({ position, scale, color, roughness }: { position: [number, number, number]; scale: number; color: string; roughness?: number }) {
   return (
     <group position={position} scale={scale}>
@@ -225,10 +216,6 @@ function CharacterMesh({ character }: { character: CharacterState }) {
   return (
     <group position={[0, -0.2, 0]}>
       <CanonicalBody character={character} />
-      <Joint position={[-shoulderJointX, shoulderY, 0]} scale={[0.42 * build, 0.54 * build, 0.56 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
-      <Joint position={[shoulderJointX, shoulderY, 0]} scale={[0.42 * build, 0.54 * build, 0.56 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
-      <Joint position={[-hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
-      <Joint position={[hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
       <mesh position={[0, neckY, 0]} scale={[0.38 * morphs.neckThickness, 0.48 * morphs.neckLength, 0.36 * morphs.neckThickness]} castShadow>
         <capsuleGeometry args={[0.25, 0.45, 8, 20]} />
         <Surface color={appearance.skin} roughness={skinRoughness} />
