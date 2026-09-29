@@ -77,6 +77,71 @@ export const MORPH_CONTROLS: Record<CharacterLane, MorphControl[]> = {
   ]
 };
 
+
+export type MakeHumanControlGroupId =
+  | 'macro'
+  | 'measure'
+  | 'face'
+  | 'torso'
+  | 'armslegs';
+
+export interface MakeHumanControlGroup {
+  id: MakeHumanControlGroupId;
+  label: string;
+  description: string;
+  controls: MorphControl[];
+}
+
+const byKeys = (controls: MorphControl[], keys: Array<keyof BodyMorphs>) =>
+  keys.flatMap((key) => controls.filter((control) => control.key === key));
+
+export function makeHumanControlGroups(lane: CharacterLane): MakeHumanControlGroup[] {
+  const controls = MORPH_CONTROLS[lane];
+  return [
+    {
+      id: 'macro',
+      label: 'Macro',
+      description: 'MakeHuman body-level variables.',
+      controls: byKeys(controls, ['height', 'build'])
+    },
+    {
+      id: 'measure',
+      label: 'Measure',
+      description: 'Dimensions backed by MakeHuman measurement and scale modifiers.',
+      controls: byKeys(controls, [
+        'shoulders','chest','chestDepth','waist','hips','hipDepth',
+        'torsoLength','neckLength','neckThickness'
+      ])
+    },
+    {
+      id: 'face',
+      label: 'Face',
+      description: 'Head, jaw, cheeks, eyes, nose, mouth and ears.',
+      controls: byKeys(controls, [
+        'headScale','craniumScale','faceWidth','faceDepth','jawWidth',
+        'chinWidth','chinProjection','cheekWidth','eyeScale','eyeSpacing',
+        'browHeight','noseWidth','noseProjection','mouthWidth','lipFullness','earSize'
+      ])
+    },
+    {
+      id: 'torso',
+      label: 'Torso',
+      description: 'Chest, waist, hips and sex-specific torso controls.',
+      controls: byKeys(controls, [
+        'chest','chestDepth','waist','hips','hipDepth','torsoLength','bust','bustProjection'
+      ])
+    },
+    {
+      id: 'armslegs',
+      label: 'Arms / Legs',
+      description: 'Limb length, thickness, hands and feet.',
+      controls: byKeys(controls, [
+        'armLength','armThickness','legLength','legThickness','handSize','footSize'
+      ])
+    }
+  ].filter((group) => group.controls.length > 0);
+}
+
 const LANE_MORPHS: Record<CharacterLane, Partial<BodyMorphs>> = {
   // Human sex differences now come from MakeHuman's native Gender macro.
   // Keep human controls neutral so changing lane does not secretly stack a
