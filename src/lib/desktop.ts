@@ -165,7 +165,6 @@ export async function openCanonicalInBlender(character: CharacterState): Promise
   const objText = await getMakeHumanBaseObj();
   const evaluated = await evaluateMakeHumanGeometry(objText, character);
   const productionObj = geometryToObj(evaluated.geometry, character.name || 'MakeHumanBody');
-  evaluated.geometry.dispose();
 
   const [skeletonText, weightText] = await Promise.all([
     getMakeHumanRigText('default.mhskel'),
@@ -179,6 +178,7 @@ export async function openCanonicalInBlender(character: CharacterState): Promise
       evaluated.geometry.getAttribute('position').count
     )
   };
+  evaluated.geometry.dispose();
 
   const recipe = {
     ...phase3ExportRecipe(character),
