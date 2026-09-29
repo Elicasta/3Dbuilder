@@ -100,6 +100,8 @@ export interface MakeHumanMacroState {
   muscle: number;
   weight: number;
   proportions: number;
+  breastSize: number;
+  breastFirmness: number;
   african: number;
   asian: number;
   caucasian: number;
@@ -173,6 +175,8 @@ export const DEFAULT_CHARACTER: CharacterState = {
     muscle: 0.5,
     weight: 0.5,
     proportions: 0.5,
+    breastSize: 0.5,
+    breastFirmness: 0.5,
     african: 1 / 3,
     asian: 1 / 3,
     caucasian: 1 / 3
