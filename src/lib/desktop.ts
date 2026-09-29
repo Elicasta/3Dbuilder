@@ -111,45 +111,29 @@ export async function openInBlender(meshPath: string): Promise<void> {
 }
 
 export async function saveCharacterRecipe(character: CharacterState): Promise<string> {
-  const catalog = character.lane === 'alien' ? [] : await getMakeHumanTargetCatalog();
-  const makeHumanTargets = character.lane === 'alien' ? [] : resolvedMakeHumanTargets(character, catalog);
-  return invoke<string>('save_recipe', {
-    name: character.name,
-    recipe: JSON.stringify(
-      {
-        schema: '3dbuilder.character.v3',
-        phase: 3,
-        coordinateSystem: 'Y-up / meters / T-pose',
-        canonical: character.lane === 'alien'
-          ? { family: 'procedural-cage-v1', morphEngine: 'procedural', targets: [] }
-          : { family: 'makehuman-hm08-v1', morphEngine: 'makehuman-targets-v1', targets: makeHumanTargets },
-        topology: { stableVertexIds: true, maxInfluences: 4, subdivisionReady: character.lane === 'alien' },
-        materials: {
-          body: {
-            uvSet: 'UV0',
-            textureResolution: character.renderTarget === 'unreal' ? 4096 : 2048,
-            pbrSlots: ['BaseColor', 'Normal', 'Roughness', 'Metallic', 'AO'],
-            skin: {
-              baseColor: character.appearance.skin,
-              secondary: character.appearance.skinSecondary,
-              roughness: character.appearance.skinRoughness,
-              subsurfaceIntent: character.appearance.skinSubsurface
-            }
-          },
-          separateObjects: ['eyes', 'hair', 'wardrobe']
-        },
-        wardrobe: {
-          slots: character.wardrobe,
-          basePresentation: 'underwear/minimal-clothing'
-        },
-        rig: { joints: canonicalJoints(character), skin: productionSkinWeights(character) },
-        exportedAt: new Date().toISOString(),
-        character
-      },
-      null,
-      2
-    )
-  });
+  const makeHuman=character.lane!=='alien';
+  const catalog=makeHuman?await getMakeHumanTargetCatalog():[];
+  const makeHumanTargets=makeHuman?resolvedMakeHumanTargets(character,catalog):[];
+  let rig:any={joints:canonicalJoints(character),skin:productionSkinWeights(character)};
+  let topology:any={stableVertexIds:true,maxInfluences:4,subdivisionReady:true};
+  if(makeHuman){
+    const objText=await getMakeHumanBaseObj();
+    const evaluated=await evaluateMakeHumanGeometry(objText,character);
+    try{
+      const [skeletonText,weightText]=await Promise.all([getMakeHumanRigText('default.mhskel'),getMakeHumanRigText('default_weights.mhw')]);
+      rig={source:'makehuman-default-v110',bones:makeHumanBones(evaluated.geometry,skeletonText),skin:makeHumanSkinWeights(weightText,evaluated.geometry.getAttribute('position').count)};
+      topology={stableVertexIds:true,maxInfluences:4,source:'MakeHuman hm08 visible body',subdivisionReady:false};
+    }finally{evaluated.geometry.dispose()}
+  }
+  return invoke<string>('save_recipe',{name:character.name,recipe:JSON.stringify({
+    schema:'3dbuilder.character.v4',phase:4,coordinateSystem:'Y-up / meters / T-pose',
+    canonical:makeHuman?{family:'makehuman-hm08-v1',morphEngine:'makehuman-targets-v1',targets:makeHumanTargets}:{family:'procedural-cage-v1',morphEngine:'procedural',targets:[]},
+    topology,
+    materials:{body:{uvSet:'UV0',textureResolution:character.renderTarget==='unreal'?4096:2048,pbrSlots:['BaseColor','Normal','Roughness','Metallic','AO'],skin:{baseColor:character.appearance.skin,secondary:character.appearance.skinSecondary,roughness:character.appearance.skinRoughness,subsurfaceIntent:character.appearance.skinSubsurface}},separateObjects:['eyes','teeth','tongue','hair','wardrobe']},
+    wardrobe:{slots:character.wardrobe,basePresentation:'underwear/minimal-clothing'},rig,
+    production:{neutralPose:'T-pose',requiresDeformationQA:true,requiresFacialRig:true,requiresLODValidation:true,requiresEngineImportValidation:true},
+    exportedAt:new Date().toISOString(),character
+  },null,2)});
 }
 
 export async function openCanonicalInBlender(character: CharacterState): Promise<void> {
