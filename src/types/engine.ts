@@ -12,6 +12,7 @@ export interface SystemCapabilities {
 export interface EngineStatus {
   id: string;
   installed: boolean;
+  prepared: boolean;
   sourcePath: string | null;
 }
 
