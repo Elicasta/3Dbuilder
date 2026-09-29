@@ -26,6 +26,10 @@ jobs:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - name: Install frontend dependencies
         run: npm install
+      - name: Typecheck frontend
+        run: npm run build
+      - name: Test Rust core
+        run: cargo test --manifest-path src-tauri/Cargo.toml
       - name: Build universal macOS app
         uses: tauri-apps/tauri-action@v0
         with:
@@ -44,5 +48,9 @@ jobs:
           targets: x86_64-pc-windows-msvc
       - name: Install frontend dependencies
         run: npm install
+      - name: Typecheck frontend
+        run: npm run build
+      - name: Test Rust core
+        run: cargo test --manifest-path src-tauri/Cargo.toml
       - name: Build Windows app
         uses: tauri-apps/tauri-action@v0
