@@ -92,6 +92,80 @@ function ContinuousTorso({
   );
 }
 
+function AnatomicalLimb({
+  points,
+  radii,
+  color,
+  roughness,
+  radialSegments = 24
+}: {
+  points: Array<[number, number, number]>;
+  radii: Array<[number, number]>;
+  color: string;
+  roughness?: number;
+  radialSegments?: number;
+}) {
+  const geometry = useMemo(() => {
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    const ringCount = Math.min(points.length, radii.length);
+
+    for (let ring = 0; ring < ringCount; ring += 1) {
+      const [x, y, z] = points[ring];
+      const [ry, rz] = radii[ring];
+      for (let segment = 0; segment < radialSegments; segment += 1) {
+        const angle = (segment / radialSegments) * Math.PI * 2;
+        // Rings live in the plane perpendicular to the limb's X/Y path.
+        // For arms the caller varies X; for legs it varies Y. We infer the
+        // dominant axis from the endpoints so one topology helper serves both.
+        const horizontal = Math.abs(points[ringCount - 1][0] - points[0][0]) >
+          Math.abs(points[ringCount - 1][1] - points[0][1]);
+        if (horizontal) {
+          vertices.push(x, y + Math.cos(angle) * ry, z + Math.sin(angle) * rz);
+        } else {
+          vertices.push(x + Math.cos(angle) * ry, y, z + Math.sin(angle) * rz);
+        }
+      }
+    }
+
+    for (let ring = 0; ring < ringCount - 1; ring += 1) {
+      for (let segment = 0; segment < radialSegments; segment += 1) {
+        const nextSegment = (segment + 1) % radialSegments;
+        const a = ring * radialSegments + segment;
+        const b = (ring + 1) * radialSegments + segment;
+        const c = (ring + 1) * radialSegments + nextSegment;
+        const d = ring * radialSegments + nextSegment;
+        indices.push(a, b, c, a, c, d);
+      }
+    }
+
+    const startCenter = vertices.length / 3;
+    vertices.push(...points[0]);
+    const endCenter = vertices.length / 3;
+    vertices.push(...points[ringCount - 1]);
+    for (let segment = 0; segment < radialSegments; segment += 1) {
+      const nextSegment = (segment + 1) % radialSegments;
+      indices.push(startCenter, segment, nextSegment);
+      const end = (ringCount - 1) * radialSegments;
+      indices.push(endCenter, end + nextSegment, end + segment);
+    }
+
+    const result = new BufferGeometry();
+    result.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+    result.setIndex(indices);
+    result.computeVertexNormals();
+    return result;
+  }, [points, radii, radialSegments]);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  return (
+    <mesh geometry={geometry} castShadow receiveShadow>
+      <Surface color={color} roughness={roughness} />
+    </mesh>
+  );
+}
+
 function Limb({
   position,
   scale,
@@ -252,10 +326,82 @@ function CharacterMesh({ character }: { character: CharacterState }) {
         <mesh position={[0.19 * head, headY + 0.19 * head, 0.49 * head]} rotation={[0, 0, 0.08]} scale={[0.17 * head, 0.025 * head, 0.025]}><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.brows} roughness={0.86} /></mesh>
       </>}
       <mesh position={[0, headY - 0.26 * head, 0.455 * head]} scale={[0.22 * morphs.jawWidth, 0.055, 0.035]}><sphereGeometry args={[0.5, 20, 14]} /><Surface color={appearance.lips} roughness={0.58} /></mesh>
-      <Limb position={[-armX, shoulderY, 0]} scale={[armThickness, armScaleX, armThickness]} rotation={[0, 0, Math.PI / 2]} color={appearance.skin} roughness={skinRoughness} />
-      <Limb position={[armX, shoulderY, 0]} scale={[armThickness, armScaleX, armThickness]} rotation={[0, 0, Math.PI / 2]} color={appearance.skin} roughness={skinRoughness} />
-      <Limb position={[-hipX, legBaseY, 0]} scale={[legThickness, upperLegLength, legThickness]} color={appearance.skin} roughness={skinRoughness} />
-      <Limb position={[hipX, legBaseY, 0]} scale={[legThickness, upperLegLength, legThickness]} color={appearance.skin} roughness={skinRoughness} />
+      <AnatomicalLimb
+        points={[
+          [-shoulderJointX * 0.92, shoulderY, 0],
+          [-armX * 0.86, shoulderY - 0.015, 0],
+          [-armX - 0.36 * morphs.armLength, shoulderY - 0.035, 0],
+          [-armX - 0.72 * morphs.armLength, shoulderY - 0.02, 0],
+          [-armReach + 0.08, shoulderY, 0]
+        ]}
+        radii={[
+          [0.27 * armThickness, 0.25 * armThickness],
+          [0.25 * armThickness, 0.23 * armThickness],
+          [0.21 * armThickness, 0.2 * armThickness],
+          [0.18 * armThickness, 0.17 * armThickness],
+          [0.14 * armThickness, 0.135 * armThickness]
+        ]}
+        color={appearance.skin}
+        roughness={skinRoughness}
+        radialSegments={realistic ? 32 : 24}
+      />
+      <AnatomicalLimb
+        points={[
+          [shoulderJointX * 0.92, shoulderY, 0],
+          [armX * 0.86, shoulderY - 0.015, 0],
+          [armX + 0.36 * morphs.armLength, shoulderY - 0.035, 0],
+          [armX + 0.72 * morphs.armLength, shoulderY - 0.02, 0],
+          [armReach - 0.08, shoulderY, 0]
+        ]}
+        radii={[
+          [0.27 * armThickness, 0.25 * armThickness],
+          [0.25 * armThickness, 0.23 * armThickness],
+          [0.21 * armThickness, 0.2 * armThickness],
+          [0.18 * armThickness, 0.17 * armThickness],
+          [0.14 * armThickness, 0.135 * armThickness]
+        ]}
+        color={appearance.skin}
+        roughness={skinRoughness}
+        radialSegments={realistic ? 32 : 24}
+      />
+      <AnatomicalLimb
+        points={[
+          [-hipX, hipJointY + 0.08, 0],
+          [-hipX, legBaseY + upperLegLength * 0.28, 0],
+          [-hipX, legBaseY - 0.03, 0],
+          [-hipX, legBaseY - upperLegLength * 0.32, 0],
+          [-hipX, footY + 0.18, 0.02]
+        ]}
+        radii={[
+          [0.29 * legThickness, 0.28 * legThickness],
+          [0.27 * legThickness, 0.26 * legThickness],
+          [0.22 * legThickness, 0.215 * legThickness],
+          [0.2 * legThickness, 0.19 * legThickness],
+          [0.145 * legThickness, 0.14 * legThickness]
+        ]}
+        color={appearance.skin}
+        roughness={skinRoughness}
+        radialSegments={realistic ? 32 : 24}
+      />
+      <AnatomicalLimb
+        points={[
+          [hipX, hipJointY + 0.08, 0],
+          [hipX, legBaseY + upperLegLength * 0.28, 0],
+          [hipX, legBaseY - 0.03, 0],
+          [hipX, legBaseY - upperLegLength * 0.32, 0],
+          [hipX, footY + 0.18, 0.02]
+        ]}
+        radii={[
+          [0.29 * legThickness, 0.28 * legThickness],
+          [0.27 * legThickness, 0.26 * legThickness],
+          [0.22 * legThickness, 0.215 * legThickness],
+          [0.2 * legThickness, 0.19 * legThickness],
+          [0.145 * legThickness, 0.14 * legThickness]
+        ]}
+        color={appearance.skin}
+        roughness={skinRoughness}
+        radialSegments={realistic ? 32 : 24}
+      />
       <Hand position={[-armReach, shoulderY, 0]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
       <Hand position={[armReach, shoulderY, 0]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
       <Foot position={[-hipX, footY, 0.18]} scale={morphs.footSize * build} color={appearance.skin} roughness={skinRoughness} />
