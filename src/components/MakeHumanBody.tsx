@@ -1,7 +1,54 @@
-import { useEffect, useMemo } from 'react';
-import type { BufferGeometry } from 'three';
+import { useEffect, useMemo, useState } from 'react';
+import { BufferGeometry } from 'three';
 import type { CharacterState } from '../types/character';
+import { getMakeHumanTargetCatalog, getMakeHumanTargetText } from '../lib/desktop';
 import { parseMakeHumanObj } from '../lib/makehumanObj';
+import { parseMakeHumanTarget, type MakeHumanTargetDelta } from '../lib/makehumanTarget';
+import { applyTargetDeltasInPlace, resolveMakeHumanMorphTargets } from '../lib/makehumanMorphs';
+
+const targetCache = new Map<string, Promise<MakeHumanTargetDelta[]>>();
+let catalogPromise: Promise<string[]> | null = null;
+
+function targetCatalog() {
+  catalogPromise ??= getMakeHumanTargetCatalog();
+  return catalogPromise;
+}
+
+function targetDeltas(path: string) {
+  let pending = targetCache.get(path);
+  if (!pending) {
+    pending = getMakeHumanTargetText(path).then(parseMakeHumanTarget);
+    targetCache.set(path, pending);
+  }
+  return pending;
+}
+
+function normalizeForViewport(geometry: BufferGeometry, character: CharacterState) {
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  if (!box) return;
+
+  const sourceHeight = Math.max(0.001, box.max.y - box.min.y);
+  const targetHeight = 4.05 * character.morphs.height;
+  const scale = targetHeight / sourceHeight;
+
+  // Build remains a useful high-level control while detailed proportions are
+  // MakeHuman targets. It changes width/depth without corrupting vertex IDs.
+  const build = character.morphs.build;
+  geometry.scale(scale * build, scale, scale * build);
+  geometry.computeBoundingBox();
+
+  const next = geometry.boundingBox;
+  if (next) {
+    const centerX = (next.min.x + next.max.x) * 0.5;
+    const centerZ = (next.min.z + next.max.z) * 0.5;
+    geometry.translate(-centerX, -2.03 - next.min.y, -centerZ);
+  }
+
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+}
 
 export default function MakeHumanBody({
   objText,
@@ -10,26 +57,58 @@ export default function MakeHumanBody({
   objText: string;
   character: CharacterState;
 }) {
-  const geometry = useMemo<BufferGeometry>(() => {
-    const parsed = parseMakeHumanObj(objText);
-    parsed.center();
-    parsed.computeBoundingBox();
-    const box = parsed.boundingBox;
-    if (box) {
-      const height = Math.max(0.001, box.max.y - box.min.y);
-      // Match the existing viewport's approximately four-unit standing human
-      // while keeping all hm08 vertex IDs and faces untouched.
-      const scale = 4.05 / height;
-      parsed.scale(scale, scale, scale);
-      parsed.computeBoundingBox();
-      const floor = parsed.boundingBox?.min.y ?? 0;
-      parsed.translate(0, -2.03 - floor, 0);
-    }
-    parsed.computeBoundingSphere();
-    return parsed;
-  }, [objText]);
+  const baseGeometry = useMemo(() => parseMakeHumanObj(objText), [objText]);
+  const [geometry, setGeometry] = useState<BufferGeometry>(() => {
+    const initial = baseGeometry.clone();
+    normalizeForViewport(initial, character);
+    return initial;
+  });
 
-  useEffect(() => () => geometry.dispose(), [geometry]);
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const catalog = await targetCatalog();
+      const resolved = resolveMakeHumanMorphTargets(character.morphs, catalog);
+      const loaded = await Promise.all(
+        resolved.map(async ({ path, weight }) => ({
+          weight,
+          deltas: await targetDeltas(path)
+        }))
+      );
+      if (cancelled) return;
+
+      const next = baseGeometry.clone();
+      const attribute = next.getAttribute('position');
+      const positions = new Float32Array(attribute.array as ArrayLike<number>);
+
+      for (const target of loaded) {
+        applyTargetDeltasInPlace(positions, target.deltas, target.weight);
+      }
+
+      attribute.copyArray(positions);
+      attribute.needsUpdate = true;
+      normalizeForViewport(next, character);
+
+      setGeometry((previous) => {
+        previous.dispose();
+        return next;
+      });
+    })().catch((error) => {
+      // Keep a valid neutral hm08 body visible if an individual target cannot
+      // be read. Engine Lab/status reporting owns installation errors.
+      console.warn('MakeHuman morph update failed', error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [baseGeometry, character.morphs]);
+
+  useEffect(() => () => {
+    geometry.dispose();
+    baseGeometry.dispose();
+  }, [baseGeometry, geometry]);
 
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
