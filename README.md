@@ -114,9 +114,14 @@ Research engine layer now included:
 - TRELLIS.2 GPU-worker lane
 - cross-platform system capability detection
 - source installer with an allow-listed engine catalog
+- TripoSR runtime preparation
+- first real AI build path: front reference → GLB
+- one-click open generated mesh in Blender
 
 See `docs/ENGINE_STACK.md`.
 
 Next engine milestone:
 
 **front / side / back reference images → multiple reconstruction candidates → canonical fitted base mesh**
+
+The first AI lane is now wired end-to-end through TripoSR. On macOS the adapter automatically uses the Apple-Silicon-oriented TripoSR fork; Windows uses the official source. The multi-view fusion and canonical fitting layer is next.
