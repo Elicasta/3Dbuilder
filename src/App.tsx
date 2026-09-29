@@ -103,6 +103,16 @@ export default function App() {
       const reset = defaultsForLane(current.lane, current.style, current);
       return {
         ...current,
+        macro: {
+          age: 0.5,
+          muscle: 0.5,
+          weight: 0.5,
+          proportions: 0.5,
+          african: 1 / 3,
+          asian: 1 / 3,
+          caucasian: 1 / 3
+        },
+        nativeModifiers: {},
         morphs: reset.morphs,
         appearance: reset.appearance
       };
