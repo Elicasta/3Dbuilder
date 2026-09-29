@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { analyzeMultiView } from '../lib/multiview';
-import type { BodyMorphs, CharacterReferences } from '../types/character';
+import type { CharacterReferences } from '../types/character';
 import type { MultiViewAnalysis } from '../types/multiview';
 
 interface MultiViewFitPanelProps {
   references: CharacterReferences;
-  onFit: (patch: Partial<BodyMorphs>, analysis: MultiViewAnalysis) => void;
 }
 
 export default function MultiViewFitPanel({
