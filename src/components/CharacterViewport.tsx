@@ -272,21 +272,28 @@ function CharacterMesh({ character }: { character: CharacterState }) {
   const female = lane === 'female';
   const realistic = style === 'realHuman';
 
-  const hipJointY = 0.58 * height;
-  const upperLegLength = 1.15 * height * legLength;
-  const legBaseY = hipJointY - upperLegLength * 0.58;
-  const torsoY = 1.52 * height * torsoLength;
-  const shoulderY = 2.05 * height * torsoLength;
-  const neckY = 2.42 * height * torsoLength;
-  const headY = 2.85 * height * torsoLength + (morphs.neckLength - 1) * 0.18;
-  const armX = 1.58 * shoulder * build;
-  const armScaleX = 0.9 * morphs.armLength;
+  // One connected proportion scaffold. Keep the pelvis above the knees and the
+  // ankles on a stable floor so the editable body reads like a person before
+  // any AI candidate is introduced.
+  const floorY = -1.92;
+  const footY = floorY + 0.13 * height;
+  const hipJointY = 0.62 * height;
+  const legSpan = Math.max(1.25, hipJointY - footY) * legLength;
+  const kneeY = hipJointY - legSpan * 0.52;
+  const ankleY = footY + 0.18;
+  const torsoY = 1.42 * height * torsoLength;
+  const shoulderY = 2.02 * height * torsoLength;
+  const neckY = 2.31 * height * torsoLength;
+  const headY = 2.72 * height * torsoLength + (morphs.neckLength - 1) * 0.18;
   const armThickness = 0.82 * morphs.armThickness * build;
   const legThickness = 0.92 * morphs.legThickness * build;
-  const hipX = 0.44 * hips * build;
-  const armReach = armX + 0.92 * morphs.armLength;
-  const footY = legBaseY - upperLegLength * 0.58 - 0.16 * height;
-  const shoulderJointX = 0.82 * shoulder * build;
+  const hipX = 0.34 * hips * build;
+  const shoulderJointX = 0.7 * shoulder * build;
+  const upperArm = 0.72 * morphs.armLength;
+  const forearm = 0.68 * morphs.armLength;
+  const elbowX = shoulderJointX + upperArm;
+  const wristX = elbowX + forearm;
+  const armReach = wristX + 0.13 * morphs.handSize;
 
   return (
     <group position={[0, -0.2, 0]}>
@@ -334,10 +341,10 @@ function CharacterMesh({ character }: { character: CharacterState }) {
       <AnatomicalLimb
         points={[
           [-shoulderJointX * 0.92, shoulderY, 0],
-          [-armX * 0.86, shoulderY - 0.015, 0],
-          [-armX - 0.36 * morphs.armLength, shoulderY - 0.035, 0],
-          [-armX - 0.72 * morphs.armLength, shoulderY - 0.02, 0],
-          [-armReach + 0.08, shoulderY, 0]
+          [-shoulderJointX - upperArm * 0.48, shoulderY - 0.025, 0],
+          [-elbowX, shoulderY - 0.045, 0],
+          [-elbowX - forearm * 0.52, shoulderY - 0.025, 0],
+          [-wristX, shoulderY, 0]
         ]}
         radii={[
           [0.22 * armThickness, 0.205 * armThickness],
@@ -353,10 +360,10 @@ function CharacterMesh({ character }: { character: CharacterState }) {
       <AnatomicalLimb
         points={[
           [shoulderJointX * 0.92, shoulderY, 0],
-          [armX * 0.86, shoulderY - 0.015, 0],
-          [armX + 0.36 * morphs.armLength, shoulderY - 0.035, 0],
-          [armX + 0.72 * morphs.armLength, shoulderY - 0.02, 0],
-          [armReach - 0.08, shoulderY, 0]
+          [shoulderJointX + upperArm * 0.48, shoulderY - 0.025, 0],
+          [elbowX, shoulderY - 0.045, 0],
+          [elbowX + forearm * 0.52, shoulderY - 0.025, 0],
+          [wristX, shoulderY, 0]
         ]}
         radii={[
           [0.22 * armThickness, 0.205 * armThickness],
@@ -372,10 +379,10 @@ function CharacterMesh({ character }: { character: CharacterState }) {
       <AnatomicalLimb
         points={[
           [-hipX, hipJointY + 0.08, 0],
-          [-hipX, legBaseY + upperLegLength * 0.28, 0],
-          [-hipX, legBaseY - 0.03, 0],
-          [-hipX, legBaseY - upperLegLength * 0.32, 0],
-          [-hipX, footY + 0.18, 0.02]
+          [-hipX, hipJointY - legSpan * 0.28, 0],
+          [-hipX, kneeY, 0],
+          [-hipX, kneeY - legSpan * 0.28, 0],
+          [-hipX, ankleY, 0.02]
         ]}
         radii={[
           [0.25 * legThickness, 0.245 * legThickness],
@@ -391,10 +398,10 @@ function CharacterMesh({ character }: { character: CharacterState }) {
       <AnatomicalLimb
         points={[
           [hipX, hipJointY + 0.08, 0],
-          [hipX, legBaseY + upperLegLength * 0.28, 0],
-          [hipX, legBaseY - 0.03, 0],
-          [hipX, legBaseY - upperLegLength * 0.32, 0],
-          [hipX, footY + 0.18, 0.02]
+          [hipX, hipJointY - legSpan * 0.28, 0],
+          [hipX, kneeY, 0],
+          [hipX, kneeY - legSpan * 0.28, 0],
+          [hipX, ankleY, 0.02]
         ]}
         radii={[
           [0.25 * legThickness, 0.245 * legThickness],
@@ -414,12 +421,12 @@ function CharacterMesh({ character }: { character: CharacterState }) {
       <mesh position={[0, 0.75 * height, 0]} scale={[0.8 * build * waist, 0.34, 0.53 * build * waistDepth]} castShadow><boxGeometry args={[1.35, 0.72, 0.9]} /><Surface color={appearance.underwear} roughness={0.88} /></mesh>
       {female && morphs.bust > 0.72 && <><mesh position={[-0.27 * chest, torsoY + 0.18, 0.41 * chestDepth]} scale={[0.28 * morphs.bust, 0.3 * morphs.bust, 0.2 * morphs.bustProjection]} castShadow><sphereGeometry args={[0.55, 28, 20]} /><Surface color={wardrobe.shirt ? appearance.shirt : appearance.skin} roughness={skinRoughness} /></mesh><mesh position={[0.27 * chest, torsoY + 0.18, 0.41 * chestDepth]} scale={[0.28 * morphs.bust, 0.3 * morphs.bust, 0.2 * morphs.bustProjection]} castShadow><sphereGeometry args={[0.55, 28, 20]} /><Surface color={wardrobe.shirt ? appearance.shirt : appearance.skin} roughness={skinRoughness} /></mesh></>}
       {wardrobe.shirt && <mesh position={[0, torsoY, 0]} scale={[0.9 * build * chest * shoulder, 0.89 * height * torsoLength, 0.51 * build * chestDepth]} castShadow><capsuleGeometry args={[0.6, 1.18, 10, 30]} /><Surface color={appearance.shirt} roughness={0.82} /></mesh>}
-      {wardrobe.pants && <><Limb position={[-hipX, legBaseY + 0.02, 0]} scale={[legThickness * 1.08, upperLegLength * 1.02, legThickness * 1.08]} color={appearance.pants} /><Limb position={[hipX, legBaseY + 0.02, 0]} scale={[legThickness * 1.08, upperLegLength * 1.02, legThickness * 1.08]} color={appearance.pants} /></>}
+      {wardrobe.pants && <><Limb position={[-hipX, (hipJointY + kneeY) / 2, 0]} scale={[legThickness * 1.08, Math.max(0.5, hipJointY - kneeY) * 0.82, legThickness * 1.08]} color={appearance.pants} /><Limb position={[hipX, (hipJointY + kneeY) / 2, 0]} scale={[legThickness * 1.08, Math.max(0.5, hipJointY - kneeY) * 0.82, legThickness * 1.08]} color={appearance.pants} /></>}
       {wardrobe.boots && <><mesh position={[-hipX, footY + 0.16 * height, 0.16]} scale={[0.48 * morphs.footSize * build, 0.55 * height, 0.78 * morphs.footSize]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.78} /></mesh><mesh position={[hipX, footY + 0.16 * height, 0.16]} scale={[0.48 * morphs.footSize * build, 0.55 * height, 0.78 * morphs.footSize]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.78} /></mesh></>}
       {wardrobe.vest && <mesh position={[0, torsoY + 0.08, 0.08]} scale={[1.02 * build * chest * shoulder, 0.72 * height, 0.59 * build * chestDepth]} castShadow><boxGeometry args={[1.3, 1.45, 0.95]} /><Surface color={appearance.vest} roughness={0.92} /></mesh>}
       {wardrobe.headwear && <mesh position={[0, headY + 0.36 * head, 0]} scale={[0.72 * head * cranium, 0.26 * head, 0.72 * head * cranium]} castShadow><sphereGeometry args={[0.78, 32, 20]} /><Surface color={appearance.vest} roughness={0.8} /></mesh>}
       {wardrobe.eyewear && <mesh position={[0, headY + 0.02 * head, 0.49 * head * (alien ? cranium : 1)]} scale={[0.48 * head * eyeScale, 0.11 * head, 0.04]} castShadow><boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color="#141922" roughness={0.2} metalness={0.08} transparent opacity={0.82} /></mesh>}
-      {wardrobe.gloves && <><mesh position={[-armX - 0.86 * morphs.armLength, shoulderY, 0]} scale={[0.2 * morphs.handSize, 0.28 * morphs.handSize, 0.13 * morphs.handSize]} rotation={[0, 0, Math.PI / 2]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.84} /></mesh><mesh position={[armX + 0.86 * morphs.armLength, shoulderY, 0]} scale={[0.2 * morphs.handSize, 0.28 * morphs.handSize, 0.13 * morphs.handSize]} rotation={[0, 0, Math.PI / 2]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.84} /></mesh></>}
+      {wardrobe.gloves && <><mesh position={[-wristX, shoulderY, 0]} scale={[0.2 * morphs.handSize, 0.28 * morphs.handSize, 0.13 * morphs.handSize]} rotation={[0, 0, Math.PI / 2]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.84} /></mesh><mesh position={[wristX, shoulderY, 0]} scale={[0.2 * morphs.handSize, 0.28 * morphs.handSize, 0.13 * morphs.handSize]} rotation={[0, 0, Math.PI / 2]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.84} /></mesh></>}
       {wardrobe.belt && <mesh position={[0, 0.83 * height, 0]} scale={[0.83 * build * waist, 0.08, 0.56 * build * waistDepth]} castShadow><boxGeometry args={[1.4, 0.6, 0.9]} /><Surface color={appearance.boots} roughness={0.76} /></mesh>}
       {wardrobe.gear && <group position={[0, torsoY - 0.05, 0.54 * build * chestDepth]}><mesh position={[-0.36, 0.05, 0]} scale={[0.22, 0.28, 0.12]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.vest} roughness={0.9} /></mesh><mesh position={[0, 0.02, 0]} scale={[0.22, 0.31, 0.12]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.vest} roughness={0.9} /></mesh><mesh position={[0.36, 0.05, 0]} scale={[0.22, 0.28, 0.12]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.vest} roughness={0.9} /></mesh></group>}
       {appearance.markingsOpacity > 0.02 && <mesh position={[0, torsoY + 0.02, 0.5 * chestDepth]} scale={[0.45 * chest, 0.45, 0.025]}><sphereGeometry args={[0.8, 24, 16]} /><meshStandardMaterial color={appearance.markings} transparent opacity={appearance.markingsOpacity * 0.6} roughness={0.7} /></mesh>}
