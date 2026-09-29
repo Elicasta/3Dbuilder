@@ -3,6 +3,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     process::Command,
+    time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::Manager;
 
@@ -30,6 +31,7 @@ struct SystemCapabilities {
 struct EngineStatus {
     id: String,
     installed: bool,
+    prepared: bool,
     source_path: Option<String>,
 }
 
@@ -39,34 +41,13 @@ struct EngineSpec {
 }
 
 const ENGINES: &[EngineSpec] = &[
-    EngineSpec {
-        id: "mpfb",
-        repository: "https://github.com/makehumancommunity/mpfb2.git",
-    },
-    EngineSpec {
-        id: "triposr",
-        repository: "https://github.com/VAST-AI-Research/TripoSR.git",
-    },
-    EngineSpec {
-        id: "charactergen",
-        repository: "https://github.com/zjp-shadow/CharacterGen.git",
-    },
-    EngineSpec {
-        id: "econ",
-        repository: "https://github.com/YuliangXiu/ECON.git",
-    },
-    EngineSpec {
-        id: "icon",
-        repository: "https://github.com/YuliangXiu/ICON.git",
-    },
-    EngineSpec {
-        id: "instantmesh",
-        repository: "https://github.com/TencentARC/InstantMesh.git",
-    },
-    EngineSpec {
-        id: "trellis2",
-        repository: "https://github.com/microsoft/TRELLIS.2.git",
-    },
+    EngineSpec { id: "mpfb", repository: "https://github.com/makehumancommunity/mpfb2.git" },
+    EngineSpec { id: "triposr", repository: "https://github.com/VAST-AI-Research/TripoSR.git" },
+    EngineSpec { id: "charactergen", repository: "https://github.com/zjp-shadow/CharacterGen.git" },
+    EngineSpec { id: "econ", repository: "https://github.com/YuliangXiu/ECON.git" },
+    EngineSpec { id: "icon", repository: "https://github.com/YuliangXiu/ICON.git" },
+    EngineSpec { id: "instantmesh", repository: "https://github.com/TencentARC/InstantMesh.git" },
+    EngineSpec { id: "trellis2", repository: "https://github.com/microsoft/TRELLIS.2.git" },
 ];
 
 fn existing_path(candidates: &[PathBuf]) -> Option<PathBuf> {
@@ -132,14 +113,12 @@ fn blender_path() -> Option<PathBuf> {
 fn python_path() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {
-        find_executable("python3", "python.exe")
-            .or_else(|| find_executable("python", "py.exe"))
+        find_executable("python", "python.exe").or_else(|| find_executable("python", "py.exe"))
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        find_executable("python3", "python3")
-            .or_else(|| find_executable("python", "python"))
+        find_executable("python3", "python3").or_else(|| find_executable("python", "python"))
     }
 }
 
@@ -155,6 +134,17 @@ fn engine_spec(id: &str) -> Option<&'static EngineSpec> {
     ENGINES.iter().find(|engine| engine.id == id)
 }
 
+fn engine_repository(spec: &EngineSpec) -> &'static str {
+    #[cfg(target_os = "macos")]
+    {
+        if spec.id == "triposr" {
+            return "https://github.com/StarxSky/TRIPOSR.git";
+        }
+    }
+
+    spec.repository
+}
+
 fn engines_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let root = app
         .path()
@@ -166,6 +156,41 @@ fn engines_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map_err(|error| format!("Could not create engine directory: {error}"))?;
 
     Ok(root)
+}
+
+fn engine_root(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
+    engine_spec(id).ok_or_else(|| format!("Unknown engine: {id}"))?;
+    Ok(engines_root(app)?.join(id))
+}
+
+fn venv_python(root: &Path) -> PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        root.join("venv").join("Scripts").join("python.exe")
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        root.join("venv").join("bin").join("python")
+    }
+}
+
+fn run_checked(command: &mut Command, label: &str) -> Result<String, String> {
+    let output = command
+        .output()
+        .map_err(|error| format!("{label} could not start: {error}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(format!(
+            "{label} failed.\n{}\n{}",
+            stdout.trim(),
+            stderr.trim()
+        ));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 #[tauri::command]
@@ -197,12 +222,15 @@ fn engine_statuses(app: tauri::AppHandle) -> Result<Vec<EngineStatus>, String> {
     Ok(ENGINES
         .iter()
         .map(|engine| {
-            let source = root.join(engine.id).join("source");
+            let engine_root = root.join(engine.id);
+            let source = engine_root.join("source");
             let installed = source.join(".git").exists();
+            let prepared = engine_root.join("venv").join(".3dbuilder-ready").exists();
 
             EngineStatus {
                 id: engine.id.to_string(),
                 installed,
+                prepared,
                 source_path: installed.then(|| source.to_string_lossy().to_string()),
             }
         })
@@ -213,7 +241,7 @@ fn engine_statuses(app: tauri::AppHandle) -> Result<Vec<EngineStatus>, String> {
 fn install_engine_source(app: tauri::AppHandle, id: String) -> Result<String, String> {
     let spec = engine_spec(&id).ok_or_else(|| format!("Unknown engine: {id}"))?;
     let git = git_path().ok_or_else(|| "Git was not found on this system.".to_string())?;
-    let root = engines_root(&app)?.join(spec.id);
+    let root = engine_root(&app, spec.id)?;
     let source = root.join("source");
 
     if source.join(".git").exists() {
@@ -230,18 +258,204 @@ fn install_engine_source(app: tauri::AppHandle, id: String) -> Result<String, St
     fs::create_dir_all(&root)
         .map_err(|error| format!("Could not create engine folder: {error}"))?;
 
-    let output = Command::new(git)
-        .args(["clone", "--depth", "1", spec.repository])
-        .arg(&source)
-        .output()
-        .map_err(|error| format!("Could not launch git: {error}"))?;
+    let mut command = Command::new(git);
+    command
+        .args(["clone", "--depth", "1", engine_repository(spec)])
+        .arg(&source);
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Git clone failed: {}", stderr.trim()));
+    run_checked(&mut command, "Git clone")?;
+    Ok(source.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn prepare_engine_runtime(app: tauri::AppHandle, id: String) -> Result<String, String> {
+    if id != "triposr" {
+        return Err(format!(
+            "{id} runtime preparation is not wired yet. Source installation is available."
+        ));
     }
 
-    Ok(source.to_string_lossy().to_string())
+    let root = engine_root(&app, &id)?;
+    let source = root.join("source");
+    if !source.join(".git").exists() {
+        return Err("Install the TripoSR source first.".to_string());
+    }
+
+    let system_python = python_path().ok_or_else(|| "Python 3 was not found.".to_string())?;
+    let python = venv_python(&root);
+
+    if !python.exists() {
+        let mut command = Command::new(system_python);
+        command.args(["-m", "venv"]).arg(root.join("venv"));
+        run_checked(&mut command, "Create Python environment")?;
+    }
+
+    let mut upgrade = Command::new(&python);
+    upgrade.args(["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"]);
+    run_checked(&mut upgrade, "Upgrade Python tooling")?;
+
+    let mut torch = Command::new(&python);
+    torch.args(["-m", "pip", "install", "torch", "torchvision"]);
+    run_checked(&mut torch, "Install PyTorch")?;
+
+    let requirements = source.join("requirements.txt");
+    let mut dependencies = Command::new(&python);
+    dependencies
+        .args(["-m", "pip", "install", "-r"])
+        .arg(&requirements);
+    run_checked(&mut dependencies, "Install TripoSR dependencies")?;
+
+    fs::write(root.join("venv").join(".3dbuilder-ready"), b"ready")
+        .map_err(|error| format!("Could not write runtime marker: {error}"))?;
+
+    Ok(python.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn stage_reference(app: tauri::AppHandle, name: String, bytes: Vec<u8>) -> Result<String, String> {
+    if bytes.is_empty() {
+        return Err("Reference image is empty.".to_string());
+    }
+
+    let extension = Path::new(&name)
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("png")
+        .to_ascii_lowercase();
+
+    if !matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp") {
+        return Err(format!("Unsupported image type: {extension}"));
+    }
+
+    let root = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| format!("Could not resolve local app data: {error}"))?
+        .join("jobs")
+        .join("staged");
+
+    fs::create_dir_all(&root)
+        .map_err(|error| format!("Could not create staging directory: {error}"))?;
+
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("System clock error: {error}"))?
+        .as_millis();
+
+    let path = root.join(format!("reference-{stamp}.{extension}"));
+    fs::write(&path, bytes)
+        .map_err(|error| format!("Could not stage reference: {error}"))?;
+
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn run_reconstruction(
+    app: tauri::AppHandle,
+    id: String,
+    input_path: String,
+) -> Result<String, String> {
+    if id != "triposr" {
+        return Err(format!("{id} inference adapter is not wired yet."));
+    }
+
+    let root = engine_root(&app, &id)?;
+    let source = root.join("source");
+    let python = venv_python(&root);
+    let ready = root.join("venv").join(".3dbuilder-ready");
+
+    if !source.join(".git").exists() {
+        return Err("TripoSR source is not installed.".to_string());
+    }
+
+    if !python.exists() || !ready.exists() {
+        return Err("TripoSR runtime is not prepared.".to_string());
+    }
+
+    let input = PathBuf::from(input_path);
+    if !input.exists() {
+        return Err("Staged reference image no longer exists.".to_string());
+    }
+
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("System clock error: {error}"))?
+        .as_millis();
+
+    let output_dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| format!("Could not resolve local app data: {error}"))?
+        .join("jobs")
+        .join(format!("triposr-{stamp}"));
+
+    fs::create_dir_all(&output_dir)
+        .map_err(|error| format!("Could not create output directory: {error}"))?;
+
+    let mut command = Command::new(&python);
+    command
+        .current_dir(&source)
+        .arg(source.join("run.py"))
+        .arg(&input)
+        .arg("--output-dir")
+        .arg(&output_dir)
+        .args([
+            "--pretrained-model-name-or-path",
+            "stabilityai/TripoSR",
+            "--model-save-format",
+            "glb",
+        ]);
+
+    #[cfg(target_os = "macos")]
+    command.args(["--device", "mps"]);
+
+    #[cfg(target_os = "windows")]
+    {
+        if nvidia_smi_path().is_some() {
+            command.args(["--device", "cuda:0"]);
+        } else {
+            command.args(["--device", "cpu"]);
+        }
+    }
+
+    run_checked(&mut command, "TripoSR reconstruction")?;
+
+    let mesh = output_dir.join("0").join("mesh.glb");
+    if !mesh.exists() {
+        return Err(format!(
+            "TripoSR finished but no mesh was found at {}",
+            mesh.to_string_lossy()
+        ));
+    }
+
+    Ok(mesh.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn open_in_blender(app: tauri::AppHandle, mesh_path: String) -> Result<(), String> {
+    let blender = blender_path().ok_or_else(|| "Blender was not found.".to_string())?;
+    let app_data = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| format!("Could not resolve local app data: {error}"))?;
+
+    let mesh = PathBuf::from(mesh_path)
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve mesh path: {error}"))?;
+    let app_data = app_data
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve app-data path: {error}"))?;
+
+    if !mesh.starts_with(&app_data) {
+        return Err("Refusing to open a mesh outside 3D Builder app data.".to_string());
+    }
+
+    Command::new(blender)
+        .arg(mesh)
+        .spawn()
+        .map_err(|error| format!("Could not launch Blender: {error}"))?;
+
+    Ok(())
 }
 
 fn safe_filename(name: &str) -> String {
@@ -290,6 +504,10 @@ pub fn run() {
             system_capabilities,
             engine_statuses,
             install_engine_source,
+            prepare_engine_runtime,
+            stage_reference,
+            run_reconstruction,
+            open_in_blender,
             save_recipe
         ])
         .run(tauri::generate_context!())
