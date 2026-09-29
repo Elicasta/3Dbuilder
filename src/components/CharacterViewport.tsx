@@ -6,7 +6,6 @@ import type { CharacterState } from '../types/character';
 import CanonicalBody from './CanonicalBody';
 import RigOverlay from './RigOverlay';
 import { POSES, POSE_LABELS, type PosePreset, type PoseState } from '../lib/pose';
-import { posedJoints } from '../lib/posedRig';
 
 function Surface({
   color,
@@ -168,7 +167,6 @@ function CharacterMesh({ character, pose }: { character: CharacterState; pose: P
   const alien = lane === 'alien';
   const female = lane === 'female';
   const realistic = style === 'realHuman';
-  const posed = useMemo(() => new Map(posedJoints(character, pose).map(j => [j.name, j.position])), [character, pose]);
 
   // One connected proportion scaffold. Keep the pelvis above the knees and the
   // ankles on a stable floor so the editable body reads like a person before
@@ -178,7 +176,6 @@ function CharacterMesh({ character, pose }: { character: CharacterState; pose: P
   const hipJointY = 0.62 * height;
   const legSpan = Math.max(1.25, hipJointY - footY) * legLength;
   const kneeY = hipJointY - legSpan * 0.52;
-  const ankleY = footY + 0.18;
   const torsoY = 1.42 * height * torsoLength;
   const shoulderY = 2.02 * height * torsoLength;
   const neckY = 2.31 * height * torsoLength;
@@ -191,25 +188,6 @@ function CharacterMesh({ character, pose }: { character: CharacterState; pose: P
   const forearm = 0.68 * morphs.armLength;
   const elbowX = shoulderJointX + upperArm;
   const wristX = elbowX + forearm;
-  const armReach = wristX + 0.13 * morphs.handSize;
-  const footPlacement = (side: 'L' | 'R'): [number, number, number] => {
-    const ankle = posed.get(`foot${side}`);
-    const toe = posed.get(`toe${side}`);
-    if (!ankle || !toe) return [side === 'L' ? -hipX : hipX, footY, 0.18];
-
-    // Anchor the visible foot at the ankle joint. Averaging ankle + toe pulled
-    // the whole foot away from the shin during knee flexion, making it look
-    // detached even though the rig hierarchy itself was correct. Keep only a
-    // small forward offset toward the toe so the foot still reads naturally.
-    const dx = toe[0] - ankle[0];
-    const dy = toe[1] - ankle[1];
-    const dz = toe[2] - ankle[2];
-    return [
-      ankle[0] + dx * 0.22,
-      ankle[1] + dy * 0.22,
-      ankle[2] + dz * 0.38
-    ];
-  };
 
   return (
     <group position={[0, -0.2, 0]}>
