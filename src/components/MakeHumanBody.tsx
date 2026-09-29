@@ -4,7 +4,7 @@ import type { CharacterState } from '../types/character';
 import { getMakeHumanTargetCatalog, getMakeHumanTargetText } from '../lib/desktop';
 import { parseMakeHumanObj } from '../lib/makehumanObj';
 import { parseMakeHumanTarget, type MakeHumanTargetDelta } from '../lib/makehumanTarget';
-import { applyTargetDeltasInPlace, resolveMakeHumanMorphTargets } from '../lib/makehumanMorphs';
+import { applyTargetDeltasInPlace, resolveMakeHumanMacroTargets, resolveMakeHumanMorphTargets } from '../lib/makehumanMorphs';
 
 const targetCache = new Map<string, Promise<MakeHumanTargetDelta[]>>();
 let catalogPromise: Promise<string[]> | null = null;
@@ -29,13 +29,10 @@ function normalizeForViewport(geometry: BufferGeometry, character: CharacterStat
   if (!box) return;
 
   const sourceHeight = Math.max(0.001, box.max.y - box.min.y);
-  const targetHeight = 4.05 * character.morphs.height;
-  const scale = targetHeight / sourceHeight;
-
-  // Build remains a useful high-level control while detailed proportions are
-  // MakeHuman targets. It changes width/depth without corrupting vertex IDs.
-  const build = character.morphs.build;
-  geometry.scale(scale * build, scale, scale * build);
+  // Morph targets own human proportions. Viewport normalization only brings
+  // the resulting MakeHuman character into our scene coordinate scale.
+  const scale = 4.05 / sourceHeight;
+  geometry.scale(scale, scale, scale);
   geometry.computeBoundingBox();
 
   const next = geometry.boundingBox;
@@ -69,7 +66,10 @@ export default function MakeHumanBody({
 
     void (async () => {
       const catalog = await targetCatalog();
-      const resolved = resolveMakeHumanMorphTargets(character.morphs, catalog);
+      const resolved = [
+        ...resolveMakeHumanMacroTargets(character.lane, character.morphs, catalog),
+        ...resolveMakeHumanMorphTargets(character.morphs, catalog)
+      ];
       const loaded = await Promise.all(
         resolved.map(async ({ path, weight }) => ({
           weight,
@@ -103,7 +103,7 @@ export default function MakeHumanBody({
     return () => {
       cancelled = true;
     };
-  }, [baseGeometry, character.morphs]);
+  }, [baseGeometry, character.lane, character.morphs]);
 
   useEffect(() => () => {
     baseGeometry.dispose();
