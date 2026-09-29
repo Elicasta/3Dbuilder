@@ -1,5 +1,6 @@
 import type { CharacterReferences } from '../types/character';
 import type { MultiViewAnalysis, ViewAnalysis } from '../types/multiview';
+import { bodyRatiosFromPose, detectReferenceLandmarks, faceRatios } from './referenceLandmarks';
 
 const SIZE = 384;
 
@@ -262,6 +263,15 @@ export async function analyzeMultiView(
     references.back ? analyzeFile(references.back) : Promise.resolve(null)
   ]);
 
+  const landmarkSets = await Promise.all(
+    (['front','side','back'] as const).map(async (view) => {
+      const file=references[view];
+      if(!file)return null;
+      try{return await detectReferenceLandmarks(file);}catch{return null;}
+    })
+  );
+  const [frontLandmarks,sideLandmarks,backLandmarks]=landmarkSets;
+
   const frontBack = [front, back].filter(Boolean) as ViewAnalysis[];
 
   const average = (
@@ -327,6 +337,37 @@ export async function analyzeMultiView(
     )
   };
 
+  const frontBody=frontLandmarks?.pose.length ? bodyRatiosFromPose(frontLandmarks.pose) : null;
+  const frontFace=frontLandmarks?.face.length ? faceRatios(frontLandmarks.face) : null;
+  if(frontBody?.torso && frontBody.shoulder){
+    const ratio=frontBody.shoulder/frontBody.torso;
+    morphPatch.shoulders=clamp((morphPatch.shoulders+mapRatio(ratio,1.02,.86,1.14))/2,.86,1.14);
+  }
+  if(frontBody?.armLeft && frontBody.forearmLeft && frontBody.torso){
+    const ratio=(frontBody.armLeft+frontBody.forearmLeft)/frontBody.torso;
+    morphPatch.armLength=clamp((morphPatch.armLength+mapRatio(ratio,1.52,.90,1.12))/2,.90,1.12);
+  }
+  if(frontBody?.thighLeft && frontBody.shinLeft && frontBody.torso){
+    const ratio=(frontBody.thighLeft+frontBody.shinLeft)/frontBody.torso;
+    morphPatch.legLength=clamp((morphPatch.legLength+mapRatio(ratio,2.02,.90,1.12))/2,.90,1.12);
+  }
+  if(frontFace?.faceHeight){
+    if(frontFace.eyeSpan) morphPatch.eyeSpacing=mapRatio(frontFace.eyeSpan/frontFace.faceHeight,.45,.90,1.12);
+    if(frontFace.noseWidth) morphPatch.noseWidth=mapRatio(frontFace.noseWidth/frontFace.faceHeight,.18,.86,1.16);
+    if(frontFace.mouthWidth) morphPatch.mouthWidth=mapRatio(frontFace.mouthWidth/frontFace.faceHeight,.34,.86,1.16);
+    if(frontFace.noseLength) morphPatch.noseLength=mapRatio(frontFace.noseLength/frontFace.faceHeight,.23,.88,1.14);
+    if(frontFace.jawSpan) morphPatch.jawWidth=clamp((morphPatch.jawWidth+mapRatio(frontFace.jawSpan/frontFace.faceHeight,.56,.86,1.16))/2,.86,1.16);
+  }
+  if(sideLandmarks?.face.length){
+    const profile=faceRatios(sideLandmarks.face);
+    if(profile.faceHeight && profile.noseLength) morphPatch.noseProjection=mapRatio(profile.noseLength/profile.faceHeight,.23,.90,1.12);
+  }
+
+  const detected=landmarkSets.filter(Boolean);
+  const landmarkConfidence=detected.length
+    ? detected.reduce((sum,item)=>sum+((item!.poseConfidence+item!.faceConfidence)/2),0)/detected.length
+    : 0;
+
   const available = [front, side, back].filter(Boolean) as ViewAnalysis[];
   const confidence = available.length
     ? available.reduce((sum, view) => sum + view.foregroundConfidence, 0) /
@@ -356,7 +397,8 @@ export async function analyzeMultiView(
   if (!front) notes.push('Front view missing.');
   if (!side) notes.push('Side view missing, depth morphs remain approximate.');
   if (!back) notes.push('Back view missing, rear silhouette is not cross-checked.');
-  notes.push('Fit writes only supported MakeHuman macro/measurement modifiers; every fitted value remains editable in Modeling.');
+  notes.push(landmarkConfidence > 0 ? 'On-device pose/face landmarks refined anatomical proportions.' : 'Landmark model unavailable; using silhouette fallback.');
+  notes.push('Fit writes supported editable character modifiers; every fitted value remains editable in Modeling.');
   if (confidence < 0.45) {
     notes.push('Low silhouette extraction confidence. Plain backgrounds and T-poses will fit better.');
   }
@@ -367,6 +409,7 @@ export async function analyzeMultiView(
     back,
     morphPatch,
     confidence,
+    landmarkConfidence,
     fitQuality,
     notes
   };
