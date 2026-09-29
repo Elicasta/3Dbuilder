@@ -36,8 +36,8 @@ export function parseMhclo(text: string): MhcloDefinition {
         result.vertices.push({
           vertices: [Number(words[0]),Number(words[1]),Number(words[2])],
           weights: [Number(words[3]),Number(words[4]),Number(words[5])],
-          // Raw MHCLO offsets use MakeHuman axes. Convert to our X/Y-up/Z convention.
-          offset: [Number(words[6]),Number(words[8]),-Number(words[7])]
+          // MHCLO offsets are already stored in MakeHuman X/Y-up/Z-depth space.
+          offset: [Number(words[6]),Number(words[7]),Number(words[8])]
         });
       }
       continue;
@@ -77,10 +77,9 @@ export function fitMhcloGeometry(
     throw new Error(`MHCLO maps ${definition.vertices.length} vertices but OBJ has ${position.count}.`);
   }
   const sx = axisScale(body, definition.xScale, 0);
-  // MPFB swaps the legacy Y/Z scale references while converting MakeHuman to Blender.
-  // Our parser has already converted MakeHuman Z-up OBJ coordinates to Y-up.
-  const sy = axisScale(body, definition.zScale, 1);
-  const sz = axisScale(body, definition.yScale, 2);
+  // Runtime stays in native MakeHuman X/Y-up/Z-depth coordinates.
+  const sy = axisScale(body, definition.yScale, 1);
+  const sz = axisScale(body, definition.zScale, 2);
   const out = new Float32Array(position.count * 3);
   for (let i=0;i<position.count;i++) {
     const map=definition.vertices[i];
