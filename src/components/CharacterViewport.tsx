@@ -220,10 +220,18 @@ function CharacterMesh({ character, pose }: { character: CharacterState; pose: P
     const ankle = posed.get(`foot${side}`);
     const toe = posed.get(`toe${side}`);
     if (!ankle || !toe) return [side === 'L' ? -hipX : hipX, footY, 0.18];
+
+    // Anchor the visible foot at the ankle joint. Averaging ankle + toe pulled
+    // the whole foot away from the shin during knee flexion, making it look
+    // detached even though the rig hierarchy itself was correct. Keep only a
+    // small forward offset toward the toe so the foot still reads naturally.
+    const dx = toe[0] - ankle[0];
+    const dy = toe[1] - ankle[1];
+    const dz = toe[2] - ankle[2];
     return [
-      ankle[0] * 0.45 + toe[0] * 0.55,
-      ankle[1] * 0.45 + toe[1] * 0.55 - 0.08 * morphs.footSize,
-      ankle[2] * 0.45 + toe[2] * 0.55
+      ankle[0] + dx * 0.22,
+      ankle[1] + dy * 0.22,
+      ankle[2] + dz * 0.38
     ];
   };
 
