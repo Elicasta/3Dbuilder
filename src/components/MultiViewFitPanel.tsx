@@ -17,7 +17,13 @@ export default function MultiViewFitPanel({ references }: MultiViewFitPanelProps
     setBusy(true);
     setError(null);
     try {
-      const result = await analyzeMultiView(references);
+      let timer:number|undefined;
+      const result = await Promise.race([
+        analyzeMultiView(references),
+        new Promise<never>((_,reject)=>{
+          timer=window.setTimeout(()=>reject(new Error('Reference analysis exceeded 20 seconds. Retry, or use Build Character to continue with available fallback evidence.')),20000);
+        })
+      ]).finally(()=>{if(timer!==undefined)window.clearTimeout(timer)});
       setAnalysis(result);
     } catch (reason) {
       setError(String(reason));
@@ -43,7 +49,7 @@ export default function MultiViewFitPanel({ references }: MultiViewFitPanelProps
           disabled={busy || count === 0}
           onClick={() => void fit()}
         >
-          {busy ? 'Analyzing views…' : 'Analyze references'}
+          {busy ? 'Analyzing views…' : error ? 'Retry analysis' : 'Analyze references'}
         </button>
 
         {error && <p className="fit-error">{error}</p>}
