@@ -386,7 +386,7 @@ fn prepare_engine_runtime(app: tauri::AppHandle, id: String) -> Result<String, S
     let runtime_requirements_path = root.join("triposr-runtime-requirements.txt");
     fs::write(
         &runtime_requirements_path,
-        format!("{}\\n", runtime_requirements.join("\\n")),
+        format!("{}\n", runtime_requirements.join("\n")),
     )
     .map_err(|error| format!("Could not write TripoSR runtime requirements: {error}"))?;
 
