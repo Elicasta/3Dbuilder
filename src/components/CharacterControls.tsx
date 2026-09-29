@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { applyStyle, defaultsForLane } from '../data/characterProfiles';
-import { WARDROBE } from '../data/wardrobe';
 import NativeMakeHumanControls from './NativeMakeHumanControls';
+import MakeHumanAssetLibrary from './MakeHumanAssetLibrary';
 import type {
   AppearanceState,
   CharacterLane,
   CharacterState,
   CharacterStyle,
-  MakeHumanMacroState,
-  WardrobeSlot
+  MakeHumanMacroState
 } from '../types/character';
 
 interface CharacterControlsProps {
@@ -50,8 +49,6 @@ export default function CharacterControls({ character, onChange, onReset }: Char
     onChange({ ...character, appearance: { ...character.appearance, [key]: value } });
   const changeLane = (lane: CharacterLane) => onChange(defaultsForLane(lane, character.style, character));
   const changeStyle = (style: CharacterStyle) => onChange(applyStyle(style, character));
-  const toggleWardrobe = (slot: WardrobeSlot) =>
-    onChange({ ...character, wardrobe: { ...character.wardrobe, [slot]: !character.wardrobe[slot] } });
   const setMacro = (key: keyof MakeHumanMacroState, value: number) =>
     onChange({ ...character, macro: { ...character.macro, [key]: value } });
 
@@ -120,14 +117,7 @@ export default function CharacterControls({ character, onChange, onReset }: Char
         </div>
       )}
 
-      {tab === 'wardrobe' && (
-        <div className="wardrobe-grid mh-tab-body">{WARDROBE.map((item) => (
-          <button className={character.wardrobe[item.slot] ? 'wardrobe-card active' : 'wardrobe-card'} type="button" key={item.slot}
-            onClick={() => toggleWardrobe(item.slot)} aria-pressed={character.wardrobe[item.slot]}>
-            <span className="wardrobe-title">{item.label}</span><span>{item.description}</span><strong>{character.wardrobe[item.slot] ? 'On' : 'Off'}</strong>
-          </button>
-        ))}</div>
-      )}
+      {tab === 'wardrobe' && <MakeHumanAssetLibrary />}
 
       {tab === 'output' && (
         <div className="mh-tab-body output-settings">
