@@ -390,6 +390,28 @@ fn makehuman_target_text(app: tauri::AppHandle, relative_path: String) -> Result
 }
 
 #[tauri::command]
+fn makehuman_rig_text(app: tauri::AppHandle, file_name: String) -> Result<String, String> {
+    if file_name != "default.mhskel" && file_name != "default_weights.mhw" {
+        return Err("Only the MakeHuman CC0 default rig assets are exposed.".to_string());
+    }
+    let rigs = engine_root(&app, "makehuman")?
+        .join("source")
+        .join("makehuman")
+        .join("data")
+        .join("rigs")
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve MakeHuman rigs: {error}"))?;
+    let requested = rigs.join(&file_name)
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve MakeHuman rig asset {file_name}: {error}"))?;
+    if !requested.starts_with(&rigs) {
+        return Err("Refusing to read a file outside the MakeHuman rig library.".to_string());
+    }
+    fs::read_to_string(&requested)
+        .map_err(|error| format!("Could not read MakeHuman rig asset {file_name}: {error}"))
+}
+
+#[tauri::command]
 fn makehuman_asset_status(app: tauri::AppHandle) -> Result<MakeHumanAssetStatus, String> {
     let root = engine_root(&app, "makehuman")?;
     let source = root.join("source");
@@ -964,7 +986,8 @@ pub fn run() {
             makehuman_asset_status,
             makehuman_base_obj,
             makehuman_target_catalog,
-            makehuman_target_text
+            makehuman_target_text,
+            makehuman_rig_text
         ])
         .run(tauri::generate_context!())
         .expect("error while running 3D Builder");
