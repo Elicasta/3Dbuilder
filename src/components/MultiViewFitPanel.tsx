@@ -56,7 +56,7 @@ export default function MultiViewFitPanel({
         {analysis && (
           <div className="fit-results">
             <div>
-              <span>Silhouette confidence</span>
+              <span>Mask extraction</span>
               <strong>{Math.round(analysis.confidence * 100)}%</strong>
             </div>
             <div>
