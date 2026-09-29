@@ -142,11 +142,23 @@ export function makeHumanControlGroups(lane: CharacterLane): MakeHumanControlGro
 }
 
 const LANE_MORPHS: Record<CharacterLane, Partial<BodyMorphs>> = {
-  // Human sex differences now come from MakeHuman's native Gender macro.
-  // Keep human controls neutral so changing lane does not secretly stack a
-  // second hand-authored body shape on top of the canonical macro.
-  male: {},
-  female: {},
+  // Artist-usable lane baselines. Native MakeHuman sex-dependent macro targets
+  // still apply, but the UI must never collapse to an androgynous hm08 neutral
+  // merely because a particular macro dependency filename is unavailable.
+  // These values remain ordinary editable morph controls and are overwritten
+  // by reference fitting when evidence is available.
+  male: {
+    shoulders:1.10, chest:1.06, chestDepth:1.05, waist:1.00, hips:.94, hipDepth:.98,
+    armThickness:1.05, legThickness:1.03, neckThickness:1.07,
+    faceWidth:1.03, jawWidth:1.08, jawHeight:1.03, cheekWidth:1.03,
+    bust:.78, bustProjection:.78
+  },
+  female: {
+    shoulders:.94, chest:.96, chestDepth:.98, waist:.91, hips:1.09, hipDepth:1.06,
+    armThickness:.94, legThickness:.98, neckThickness:.93,
+    faceWidth:.98, jawWidth:.92, jawHeight:.97, cheekWidth:1.02,
+    bust:1.10, bustProjection:1.10
+  },
   alien: {
     height: 1.06,
     shoulders: 0.92,
