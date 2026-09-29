@@ -487,6 +487,32 @@ fn run_reconstruction(
         return Err("TripoSR runtime is not prepared.".to_string());
     }
 
+    // Self-heal older prepared runtimes. trimesh 4.0.5's GLB exporter uses
+    // ndarray.ptp(), which NumPy 2 removed. A user may already have a ready
+    // runtime from before we added the NumPy 1.x pin, so repair it here once
+    // instead of letting a 20-second reconstruction fail at export.
+    let numpy_compatible = Command::new(&python)
+        .args([
+            "-c",
+            "import numpy as np, sys; sys.exit(0 if int(np.__version__.split('.')[0]) < 2 else 1)",
+        ])
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false);
+
+    if !numpy_compatible {
+        let mut repair_numpy = Command::new(&python);
+        repair_numpy.args([
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "--force-reinstall",
+            "numpy>=1.24,<2",
+        ]);
+        run_checked(&mut repair_numpy, "Repair TripoSR NumPy compatibility")?;
+    }
+
     let input = PathBuf::from(input_path);
     if !input.exists() {
         return Err("Staged reference image no longer exists.".to_string());
