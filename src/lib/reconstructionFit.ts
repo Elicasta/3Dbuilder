@@ -36,6 +36,10 @@ export async function solveIdentityFromReferences(references:CharacterReferences
   // The authoritative build must always return a usable editable character.
   // Start from deterministic silhouette evidence; landmark refinement is optional.
   const analysis=await analyzeMultiView(references,{landmarks:false});
+  return solveIdentityFromAnalysis(analysis,baseObjText,seedCharacter);
+}
+
+export async function solveIdentityFromAnalysis(analysis:MultiViewAnalysis,baseObjText?:string,seedCharacter?:CharacterState):Promise<IdentityFit>{
   const observations:ReconstructionObservation[]=[];
   if(analysis.front)observations.push(observation('front',analysis.front));
   if(analysis.side)observations.push(observation('side',analysis.side));
