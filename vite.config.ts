@@ -13,7 +13,7 @@ export default defineConfig({
     // drei/three dependencies manually created a circular Rollup chunk and did
     // not reduce download cost. Keep stable framework/vendor boundaries and
     // set the warning threshold just above the known graphics runtime.
-    chunkSizeWarningLimit: 800,
+    chunkSizeWarningLimit: 960,
     rollupOptions: {
       output: {
         manualChunks(id) {
