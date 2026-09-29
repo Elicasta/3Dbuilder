@@ -4,6 +4,7 @@ import { Box3, BufferGeometry, Float32BufferAttribute, Group, Vector3 } from 'th
 import { Canvas } from '@react-three/fiber';
 import type { CharacterState } from '../types/character';
 import CanonicalBody from './CanonicalBody';
+import MakeHumanBody from './MakeHumanBody';
 import RigOverlay from './RigOverlay';
 import { POSES, POSE_LABELS, type PosePreset, type PoseState } from '../lib/pose';
 
@@ -147,7 +148,10 @@ function Eye({
   );
 }
 
-function CharacterMesh({ character, pose }: { character: CharacterState; pose: PoseState }) {
+function CharacterMesh({ character, pose, makeHumanObj }: { character: CharacterState; pose: PoseState; makeHumanObj?: string | null }) {
+  if (makeHumanObj && character.lane !== 'alien') {
+    return <MakeHumanBody objText={makeHumanObj} character={character} />;
+  }
   const { morphs, appearance, wardrobe, lane, style } = character;
   const height = morphs.height;
   const build = morphs.build;
@@ -313,19 +317,21 @@ export default function CharacterViewport({
   character,
   aiMeshUrl = null,
   viewMode = 'canonical',
-  onViewModeChange
+  onViewModeChange,
+  makeHumanObj = null
 }: {
   character: CharacterState;
   aiMeshUrl?: string | null;
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
+  makeHumanObj?: string | null;
 }) {
   const [posePreset, setPosePreset] = useState<PosePreset>('tPose');
   const pose = POSES[posePreset];
   return (
     <section className="panel viewport-panel">
       <div className="panel-header viewport-header">
-        <div><h2>Live 3D Builder</h2><p>{character.lane} · {character.style} · {character.renderTarget}</p></div>
+        <div><h2>Live 3D Builder</h2><p>{character.lane} · {character.style} · {character.renderTarget}{makeHumanObj && character.lane !== 'alien' ? ' · MakeHuman hm08' : ' · procedural fallback'}</p></div>
         <div className="viewport-mode-switch">
           {(['canonical', 'rig', 'ai', 'overlay'] as ViewMode[]).map((mode) => (
             <button key={mode} type="button" className={viewMode === mode ? 'active' : ''} disabled={!aiMeshUrl && (mode === 'ai' || mode === 'overlay')} onClick={() => onViewModeChange?.(mode)}>
@@ -344,7 +350,7 @@ export default function CharacterViewport({
           <ambientLight intensity={1.2} />
           <directionalLight castShadow intensity={3.1} position={[4, 8, 5]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
           <directionalLight intensity={1.25} position={[-5, 3, -4]} />
-          {(viewMode === 'canonical' || viewMode === 'rig' || viewMode === 'overlay') && <CharacterMesh character={character} pose={pose} />}
+          {(viewMode === 'canonical' || viewMode === 'rig' || viewMode === 'overlay') && <CharacterMesh character={character} pose={pose} makeHumanObj={makeHumanObj} />}
           {viewMode === 'rig' && <RigOverlay character={character} pose={pose} />}
           {aiMeshUrl && (viewMode === 'ai' || viewMode === 'overlay') && <Suspense fallback={null}><AlignedAICandidate url={aiMeshUrl} character={character} overlay={viewMode === 'overlay'} /></Suspense>}
           <gridHelper args={[18, 18, '#303846', '#202630']} position={[0, -2.05, 0]} />
