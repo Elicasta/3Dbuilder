@@ -4,6 +4,10 @@ A local-first desktop character builder for **macOS and Windows**.
 
 V1 is being built as a real builder from the start:
 
+- **Male / Female / Alien** canonical lanes
+- **Stylized / Semi-real / Real human** style families
+- Unreal-aware output profile
+
 - front / side / back reference intake
 - live 3D viewport
 - reusable character data model
@@ -96,10 +100,11 @@ Implemented foundation:
 
 - Tauri desktop app structure
 - live orbitable 3D procedural character
-- body morph sliders
-- material colors
-- shirt / pants / boots / vest slots
+- lane-specific body and proportion controls
+- skin / eye / hair / lip / marking controls and surface parameters
+- modular top / bottom / footwear / outerwear / headwear / eyewear / gloves / belt / gear slots
 - reference-image previews
+- multi-view silhouette fitting that drives the editable canonical body
 - cross-platform Blender detection
 - native character-recipe saving
 - macOS and Windows CI build definitions
@@ -125,3 +130,8 @@ Next engine milestone:
 **front / side / back reference images → multiple reconstruction candidates → canonical fitted base mesh**
 
 The first AI lane is now wired end-to-end through TripoSR. On macOS the adapter automatically uses the Apple-Silicon-oriented TripoSR fork; Windows uses the official source. The multi-view fusion and canonical fitting layer is next.
+
+
+## Architecture
+
+See `docs/MASTER_ARCHITECTURE.md` for the male, female, alien, realistic-human, Unreal, multi-view, wardrobe, and engine plan.
