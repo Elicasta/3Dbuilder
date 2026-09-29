@@ -33,7 +33,9 @@ function crossViewLoss(analysis:MultiViewAnalysis){
   return values.length?1-values.reduce((a,b)=>a+b,0)/values.length:.25;
 }
 export async function solveIdentityFromReferences(references:CharacterReferences,baseObjText?:string,seedCharacter?:CharacterState):Promise<IdentityFit>{
-  const analysis=await analyzeMultiView(references);
+  // The authoritative build must always return a usable editable character.
+  // Start from deterministic silhouette evidence; landmark refinement is optional.
+  const analysis=await analyzeMultiView(references,{landmarks:false});
   const observations:ReconstructionObservation[]=[];
   if(analysis.front)observations.push(observation('front',analysis.front));
   if(analysis.side)observations.push(observation('side',analysis.side));
@@ -46,9 +48,23 @@ export async function solveIdentityFromReferences(references:CharacterReferences
   let modelLoss=.35;
   if(baseObjText&&seedCharacter){
     const seed={...seedCharacter,macro:{...seedCharacter.macro,...macroPatch},morphs:{...seedCharacter.morphs,...morphPatch}};
-    const optimized=await optimizeProfileFit(baseObjText,seed,{front:analysis.front,side:analysis.side});
-    morphPatch={...morphPatch,...optimized.patch};
-    optimization=optimized.report;modelLoss=optimized.report.bestLoss;
+    let timer:number|undefined;
+    try{
+      const optimized=await Promise.race([
+        optimizeProfileFit(baseObjText,seed,{front:analysis.front,side:analysis.side}),
+        new Promise<never>((_,reject)=>{
+          timer=window.setTimeout(()=>reject(new Error('Profile optimizer timed out')),15000);
+        })
+      ]);
+      morphPatch={...morphPatch,...optimized.patch};
+      optimization=optimized.report;modelLoss=optimized.report.bestLoss;
+    }catch{
+      // Silhouette measurements are already a valid editable fit. Refinement
+      // must never prevent Build Character from completing.
+      optimization=null;modelLoss=.25;
+    }finally{
+      if(timer!==undefined)window.clearTimeout(timer);
+    }
   }
   const observationLoss=1-analysis.fitQuality;
   const crossView=crossViewLoss(analysis);
