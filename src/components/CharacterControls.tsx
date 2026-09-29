@@ -59,7 +59,7 @@ export default function CharacterControls({
     });
   };
 
-  const updateAppearance = <K extends keyof AppearanceState>(
+  const updateAppearance = <K extends keyof AppearanceState,>(
     key: K,
     value: AppearanceState[K]
   ) => {
