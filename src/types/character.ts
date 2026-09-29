@@ -111,6 +111,7 @@ export interface CharacterState {
   style: CharacterStyle;
   renderTarget: RenderTarget;
   macro: MakeHumanMacroState;
+  nativeModifiers: Record<string, number>;
   morphs: BodyMorphs;
   appearance: AppearanceState;
   wardrobe: WardrobeState;
@@ -175,6 +176,7 @@ export const DEFAULT_CHARACTER: CharacterState = {
     asian: 1 / 3,
     caucasian: 1 / 3
   },
+  nativeModifiers: {},
   morphs: { ...BASE_MORPHS },
   appearance: {
     skin: '#9a6248',
