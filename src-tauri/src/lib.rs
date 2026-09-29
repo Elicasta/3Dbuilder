@@ -335,6 +335,61 @@ fn makehuman_base_obj(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn makehuman_target_catalog(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let targets = engine_root(&app, "makehuman")?
+        .join("source")
+        .join("makehuman")
+        .join("data")
+        .join("targets");
+    if !targets.exists() {
+        return Err("MakeHuman targets are not installed.".to_string());
+    }
+
+    let mut result = Vec::new();
+    let mut stack = vec![targets.clone()];
+    while let Some(dir) = stack.pop() {
+        let entries = fs::read_dir(&dir)
+            .map_err(|error| format!("Could not scan MakeHuman targets: {error}"))?;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().and_then(|value| value.to_str()) == Some("target") {
+                if let Ok(relative) = path.strip_prefix(&targets) {
+                    result.push(relative.to_string_lossy().replace('\\', "/"));
+                }
+            }
+        }
+    }
+    result.sort();
+    Ok(result)
+}
+
+#[tauri::command]
+fn makehuman_target_text(app: tauri::AppHandle, relative_path: String) -> Result<String, String> {
+    let targets = engine_root(&app, "makehuman")?
+        .join("source")
+        .join("makehuman")
+        .join("data")
+        .join("targets")
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve MakeHuman targets: {error}"))?;
+
+    let requested = targets.join(&relative_path)
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve MakeHuman target {relative_path}: {error}"))?;
+
+    if !requested.starts_with(&targets)
+        || requested.extension().and_then(|value| value.to_str()) != Some("target")
+    {
+        return Err("Refusing to read a file outside the MakeHuman target library.".to_string());
+    }
+
+    fs::read_to_string(&requested)
+        .map_err(|error| format!("Could not read MakeHuman target {relative_path}: {error}"))
+}
+
+#[tauri::command]
 fn makehuman_asset_status(app: tauri::AppHandle) -> Result<MakeHumanAssetStatus, String> {
     let root = engine_root(&app, "makehuman")?;
     let source = root.join("source");
@@ -905,8 +960,12 @@ pub fn run() {
             latest_generated_mesh,
             open_in_blender,
             open_character_in_blender,
-            save_recipe
-        , makehuman_asset_status, makehuman_base_obj])
+            save_recipe,
+            makehuman_asset_status,
+            makehuman_base_obj,
+            makehuman_target_catalog,
+            makehuman_target_text
+        ])
         .run(tauri::generate_context!())
         .expect("error while running 3D Builder");
 }
