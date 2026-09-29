@@ -614,7 +614,8 @@ fn open_in_blender(app: tauri::AppHandle, mesh_path: String) -> Result<(), Strin
     };
 
     Command::new(blender)
-        .args(["--python-expr", &importer])
+        .env("THREEDBUILDER_MESH", &mesh)
+        .args(["--python-expr", importer])
         .spawn()
         .map_err(|error| format!("Could not launch Blender and import mesh: {error}"))?;
 
