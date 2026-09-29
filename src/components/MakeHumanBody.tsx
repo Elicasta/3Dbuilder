@@ -12,6 +12,34 @@ import { applyMakeHumanPose, MAKEHUMAN_POSES, skinMakeHumanGeometry } from '../l
 interface FittedAsset { path: string; geometry: BufferGeometry; materialText: string | null }
 type RiggedBody={geometry:BufferGeometry;mesh:import('three').SkinnedMesh;bones:import('three').Bone[]};
 
+function FallbackHair({ color, style }: { color:string; style:CharacterState['style'] }) {
+  const sx=style==='stylized'?.44:style==='semiReal'?.41:.39;
+  const sy=style==='stylized'?.34:style==='semiReal'?.31:.29;
+  return <group>
+    <mesh position={[0,1.72,-.02]} scale={[sx,sy,.41]} castShadow>
+      <sphereGeometry args={[1,32,20,0,Math.PI*2,0,Math.PI*.58]} />
+      <meshStandardMaterial color={color} roughness={.88} metalness={0} />
+    </mesh>
+    {style==='stylized' && <mesh position={[-.13,1.76,.29]} rotation={[0,0,-.28]} scale={[.16,.24,.12]} castShadow>
+      <sphereGeometry args={[1,20,14]} />
+      <meshStandardMaterial color={color} roughness={.9} metalness={0} />
+    </mesh>}
+  </group>;
+}
+
+function PresentationBaseLayer({ color }: { color:string }) {
+  return <group>
+    <mesh position={[0,-.48,.01]} scale={[.54,.29,.34]} castShadow receiveShadow>
+      <sphereGeometry args={[1,32,18]} />
+      <meshStandardMaterial color={color} roughness={.9} metalness={0} />
+    </mesh>
+    <mesh position={[0,-.28,0]} scale={[.56,.055,.35]} castShadow>
+      <boxGeometry args={[2,1,2]} />
+      <meshStandardMaterial color={color} roughness={.9} metalness={0} />
+    </mesh>
+  </group>;
+}
+
 export default function MakeHumanBody({ objText, character, poseName='bind' }: { objText: string; character: CharacterState; poseName?: string }) {
   const neutral = useMemo(() => {
     const geometry=parseMakeHumanObj(objText); normalizeMakeHumanForViewport(geometry); return geometry;
@@ -19,6 +47,7 @@ export default function MakeHumanBody({ objText, character, poseName='bind' }: {
   const [geometry,setGeometry]=useState<BufferGeometry>(()=>neutral.clone());
   const [rigged,setRigged]=useState<RiggedBody|null>(null);
   const [assets,setAssets]=useState<FittedAsset[]>([]);
+  const hasHairAsset=assets.some((asset)=>{const lower=asset.path.toLowerCase();return (lower.includes('/hair/')||lower.includes('hair'))&&!lower.includes('eyebrow')&&!lower.includes('brow')});
 
   useEffect(() => {
     let cancelled=false;
@@ -73,6 +102,8 @@ export default function MakeHumanBody({ objText, character, poseName='bind' }: {
       </primitive> : <mesh geometry={geometry} castShadow receiveShadow>
         <meshStandardMaterial color={character.appearance.skin} roughness={character.appearance.skinRoughness} metalness={0.01}/>
       </mesh>}
+      {character.lane!=='alien' && <PresentationBaseLayer color={character.appearance.underwear} />}
+      {character.appearance.hairEnabled && !hasHairAsset && <FallbackHair color={character.appearance.hair} style={character.style} />}
       {assets.map((asset)=>{
         const lower=asset.path.toLowerCase();
         const material=asset.materialText ? parseMakeHumanMaterial(asset.materialText) : null;
