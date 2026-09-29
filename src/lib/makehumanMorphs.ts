@@ -206,6 +206,23 @@ export function resolveMakeHumanMacroTargets(
   return [...result].map(([path, weight]) => ({ path, weight }));
 }
 
+export function inspectMakeHumanMacroResolution(
+  lane: CharacterLane,
+  morphs: BodyMorphs,
+  catalog: readonly string[],
+  macro?: MakeHumanMacroState
+) {
+  const targets=resolveMakeHumanMacroTargets(lane,morphs,catalog,macro);
+  const sex=lane==='female'?'female':lane==='male'?'male':null;
+  const sexTargets=sex?targets.filter(t=>t.path.toLowerCase().includes(`-${sex}-`)):[];
+  return {
+    resolved:targets.length,
+    sexResolved:sexTargets.length,
+    hasSexBasis:lane==='alien'||sexTargets.length>0,
+    sample:targets.slice(0,8).map(t=>t.path)
+  };
+}
+
 export function resolveMakeHumanMorphTargets(
   morphs: BodyMorphs,
   catalog: readonly string[]
