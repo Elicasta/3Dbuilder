@@ -43,6 +43,12 @@ export async function getMakeHumanTargetText(relativePath: string): Promise<stri
   return invoke<string>('makehuman_target_text', { relativePath });
 }
 
+export async function getMakeHumanRigText(
+  fileName: 'default.mhskel' | 'default_weights.mhw'
+): Promise<string> {
+  return invoke<string>('makehuman_rig_text', { fileName });
+}
+
 export async function getMakeHumanAssetStatus(): Promise<MakeHumanAssetStatus> {
   return invoke<MakeHumanAssetStatus>('makehuman_asset_status');
 }
