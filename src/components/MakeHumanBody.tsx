@@ -11,7 +11,7 @@ import {
 } from 'three';
 import type { CharacterState, DetailLayerState } from '../types/character';
 import { getMakeHumanAssetBundle, getMakeHumanAssetCatalog, getMakeHumanRigText } from '../lib/desktop';
-import { fittedAssetFromTexts, normalizeAssetWithBody } from '../lib/makehumanAsset';
+import { fittedAssetFromTexts, normalizeAssetWithBody, parseMhclo } from '../lib/makehumanAsset';
 import { evaluateMakeHumanGeometry, normalizeMakeHumanForViewport } from '../lib/makehumanCharacter';
 import { parseMakeHumanMaterial } from '../lib/makehumanMaterial';
 import { parseMakeHumanObj } from '../lib/makehumanObj';
@@ -22,6 +22,9 @@ interface FittedAsset {
   path: string;
   geometry: BufferGeometry;
   materialText: string | null;
+  definitionText: string;
+  mesh?: import('three').SkinnedMesh;
+  bones?: import('three').Bone[];
 }
 
 type RiggedBody = {
@@ -37,6 +40,49 @@ const isHairPath = (path: string) => {
 
 const isAnatomyPath = (path: string) => /genital|penis|vulva|vagina|labia/i.test(path);
 const isEyePath = (path: string) => /(^|\/)(eye|eyes)(\/|\.|_|-)|eyeball|iris/i.test(path);
+
+function transferAssetWeights(
+  definitionText: string,
+  bodyWeights: ReturnType<typeof makeHumanSkinWeights>,
+  vertexCount: number
+) {
+  const definition = parseMhclo(definitionText);
+  const bodyByVertex = new Map(bodyWeights.map((entry) => [entry.vertex, entry.influences]));
+  const result: ReturnType<typeof makeHumanSkinWeights> = [];
+  let weightedVertices = 0;
+
+  for (let vertex = 0; vertex < vertexCount; vertex += 1) {
+    const mapping = definition.vertices[vertex];
+    const joints = new Map<string, number>();
+
+    if (mapping) {
+      for (let sourceIndex = 0; sourceIndex < 3; sourceIndex += 1) {
+        const sourceVertex = mapping.vertices[sourceIndex];
+        const sourceWeight = mapping.weights[sourceIndex];
+        if (!sourceWeight) continue;
+
+        for (const influence of bodyByVertex.get(sourceVertex) ?? []) {
+          joints.set(
+            influence.joint,
+            (joints.get(influence.joint) ?? 0) + influence.weight * sourceWeight
+          );
+        }
+      }
+    }
+
+    const total = [...joints.values()].reduce((sum, weight) => sum + weight, 0);
+    const influences = [...joints.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([joint, weight]) => ({ joint, weight: total > 0 ? weight / total : 0 }))
+      .filter((influence) => influence.weight > 0.0001);
+
+    if (influences.length) weightedVertices += 1;
+    result.push({ vertex, influences });
+  }
+
+  return weightedVertices >= Math.max(1, Math.floor(vertexCount * 0.5)) ? result : null;
+}
 
 function applySkinVertexColors(geometry: BufferGeometry, character: CharacterState) {
   const positions = geometry.getAttribute('position');
@@ -418,7 +464,12 @@ export default function MakeHumanBody({
             const bundle = await getMakeHumanAssetBundle(path);
             const asset = fittedAssetFromTexts(bundle.definitionText, bundle.objText, body);
             normalizeAssetWithBody(asset, body);
-            return { path, geometry: asset, materialText: bundle.materialText };
+            return {
+              path,
+              geometry: asset,
+              materialText: bundle.materialText,
+              definitionText: bundle.definitionText
+            };
           })
         );
 
@@ -456,6 +507,18 @@ export default function MakeHumanBody({
 
         const skinned = skinMakeHumanGeometry(body, normalizedDefs, weights);
 
+        for (const item of fitted) {
+          const assetWeights = transferAssetWeights(
+            item.definitionText,
+            weights,
+            item.geometry.getAttribute('position').count
+          );
+          if (!assetWeights) continue;
+          const skinnedAsset = skinMakeHumanGeometry(item.geometry, normalizedDefs, assetWeights);
+          item.mesh = skinnedAsset.mesh;
+          item.bones = skinnedAsset.bones;
+        }
+
         if (cancelled) {
           body.dispose();
           fitted.forEach((item) => item.geometry.dispose());
@@ -487,10 +550,12 @@ export default function MakeHumanBody({
   useEffect(() => () => neutral.dispose(), [neutral]);
 
   useEffect(() => {
-    if (rigged) {
-      applyMakeHumanPose(rigged.bones, MAKEHUMAN_POSES[poseName] ?? MAKEHUMAN_POSES.bind);
-    }
-  }, [rigged, poseName]);
+    const pose = MAKEHUMAN_POSES[poseName] ?? MAKEHUMAN_POSES.bind;
+    if (rigged) applyMakeHumanPose(rigged.bones, pose);
+    assets.forEach((asset) => {
+      if (asset.bones) applyMakeHumanPose(asset.bones, pose);
+    });
+  }, [rigged, assets, poseName]);
 
   useEffect(
     () => () => {
@@ -530,17 +595,25 @@ export default function MakeHumanBody({
                 ? '#e7e1d7'
                 : character.appearance.shirt;
 
-        return (
+        const materialNode = (
+          <meshPhysicalMaterial
+            color={material?.diffuseColor ?? fallback}
+            roughness={material?.roughness ?? (lower.includes('eye') ? 0.18 : isHairPath(asset.path) ? 0.48 : 0.72)}
+            metalness={0}
+            clearcoat={lower.includes('eye') ? 0.72 : isHairPath(asset.path) ? character.appearance.hairGloss * 0.25 : 0.04}
+            clearcoatRoughness={lower.includes('eye') ? 0.05 : 0.45}
+            transparent={material?.transparent || (material?.opacity ?? 1) < 1}
+            opacity={material?.opacity ?? 1}
+          />
+        );
+
+        return asset.mesh ? (
+          <primitive key={asset.path} object={asset.mesh} castShadow receiveShadow>
+            {materialNode}
+          </primitive>
+        ) : (
           <mesh key={asset.path} geometry={asset.geometry} castShadow receiveShadow>
-            <meshPhysicalMaterial
-              color={material?.diffuseColor ?? fallback}
-              roughness={material?.roughness ?? (lower.includes('eye') ? 0.18 : isHairPath(asset.path) ? 0.48 : 0.72)}
-              metalness={0}
-              clearcoat={lower.includes('eye') ? 0.72 : 0.04}
-              clearcoatRoughness={lower.includes('eye') ? 0.05 : 0.45}
-              transparent={material?.transparent || (material?.opacity ?? 1) < 1}
-              opacity={material?.opacity ?? 1}
-            />
+            {materialNode}
           </mesh>
         );
       })}
