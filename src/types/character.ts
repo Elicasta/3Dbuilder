@@ -32,6 +32,21 @@ export interface BodyMorphs {
   jawWidth: number;
   craniumScale: number;
   eyeScale: number;
+  faceWidth: number;
+  faceDepth: number;
+  jawHeight: number;
+  chinWidth: number;
+  chinProjection: number;
+  cheekWidth: number;
+  eyeSpacing: number;
+  eyeHeight: number;
+  browHeight: number;
+  noseWidth: number;
+  noseLength: number;
+  noseProjection: number;
+  mouthWidth: number;
+  lipFullness: number;
+  earSize: number;
   bust: number;
   bustProjection: number;
 }
@@ -116,6 +131,21 @@ export const BASE_MORPHS: BodyMorphs = {
   jawWidth: 1,
   craniumScale: 1,
   eyeScale: 1,
+  faceWidth: 1,
+  faceDepth: 1,
+  jawHeight: 1,
+  chinWidth: 1,
+  chinProjection: 1,
+  cheekWidth: 1,
+  eyeSpacing: 1,
+  eyeHeight: 1,
+  browHeight: 1,
+  noseWidth: 1,
+  noseLength: 1,
+  noseProjection: 1,
+  mouthWidth: 1,
+  lipFullness: 1,
+  earSize: 1,
   bust: 1,
   bustProjection: 1
 };
