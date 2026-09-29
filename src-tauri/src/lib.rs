@@ -596,10 +596,35 @@ fn open_in_blender(app: tauri::AppHandle, mesh_path: String) -> Result<(), Strin
         return Err("Refusing to open a mesh outside 3D Builder app data.".to_string());
     }
 
+    // Blender treats a positional path as a .blend project. GLB/GLTF/OBJ
+    // meshes must be imported into a Blender scene instead.
+    let extension = mesh
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+
+    let escaped = mesh
+        .to_string_lossy()
+        .replace('\\\\', "\\\\")
+        .replace('\\'', "\\\\'");
+
+    let importer = match extension.as_str() {
+        "glb" | "gltf" => format!(
+            "import bpy; bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False); bpy.ops.import_scene.gltf(filepath='{}')",
+            escaped
+        ),
+        "obj" => format!(
+            "import bpy; bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False); bpy.ops.wm.obj_import(filepath='{}')",
+            escaped
+        ),
+        _ => return Err(format!("Blender import is not wired for .{extension} files.")),
+    };
+
     Command::new(blender)
-        .arg(mesh)
+        .args(["--python-expr", &importer])
         .spawn()
-        .map_err(|error| format!("Could not launch Blender: {error}"))?;
+        .map_err(|error| format!("Could not launch Blender and import mesh: {error}"))?;
 
     Ok(())
 }
