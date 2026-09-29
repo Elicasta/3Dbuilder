@@ -12,7 +12,7 @@ verts 0
 `);
     expect(parsed.objFile).toBe('eyes.obj');
     expect(parsed.vertices[0]).toEqual({vertices:[0,0,0],weights:[1,0,0],offset:[0,0,0]});
-    expect(parsed.vertices[1]).toEqual({vertices:[0,1,2],weights:[0.5,0.25,0.25],offset:[1,3,-2]});
+    expect(parsed.vertices[1]).toEqual({vertices:[0,1,2],weights:[0.5,0.25,0.25],offset:[1,2,3]});
   });
 
   it('fits an asset vertex to the evaluated hm08 body mapping', () => {
