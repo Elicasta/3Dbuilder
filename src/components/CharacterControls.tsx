@@ -1,17 +1,13 @@
-import { useMemo, useState } from 'react';
-import {
-  applyStyle,
-  defaultsForLane,
-  makeHumanControlGroups,
-  type MakeHumanControlGroupId
-} from '../data/characterProfiles';
+import { useState } from 'react';
+import { applyStyle, defaultsForLane } from '../data/characterProfiles';
 import { WARDROBE } from '../data/wardrobe';
+import NativeMakeHumanControls from './NativeMakeHumanControls';
 import type {
   AppearanceState,
-  BodyMorphs,
   CharacterLane,
   CharacterState,
   CharacterStyle,
+  MakeHumanMacroState,
   WardrobeSlot
 } from '../types/character';
 
@@ -41,150 +37,110 @@ const SURFACE_CONTROLS = [
   { key: 'markingsOpacity', label: 'Markings', min: 0, max: 1 }
 ] as const;
 
+const MACROS: Array<{ key: keyof MakeHumanMacroState; label: string }> = [
+  { key: 'age', label: 'Age' },
+  { key: 'muscle', label: 'Muscle' },
+  { key: 'weight', label: 'Weight' },
+  { key: 'proportions', label: 'Proportions' }
+];
+
 export default function CharacterControls({ character, onChange, onReset }: CharacterControlsProps) {
   const [tab, setTab] = useState<EditorTab>('modeling');
-  const groups = useMemo(() => makeHumanControlGroups(character.lane), [character.lane]);
-  const [groupId, setGroupId] = useState<MakeHumanControlGroupId>('macro');
-  const activeGroup = groups.find((group) => group.id === groupId) ?? groups[0];
-
-  const updateMorph = (key: keyof BodyMorphs, value: number) =>
-    onChange({ ...character, morphs: { ...character.morphs, [key]: value } });
-
   const updateAppearance = <K extends keyof AppearanceState>(key: K, value: AppearanceState[K]) =>
     onChange({ ...character, appearance: { ...character.appearance, [key]: value } });
-
   const changeLane = (lane: CharacterLane) => onChange(defaultsForLane(lane, character.style, character));
   const changeStyle = (style: CharacterStyle) => onChange(applyStyle(style, character));
   const toggleWardrobe = (slot: WardrobeSlot) =>
     onChange({ ...character, wardrobe: { ...character.wardrobe, [slot]: !character.wardrobe[slot] } });
+  const setMacro = (key: keyof MakeHumanMacroState, value: number) =>
+    onChange({ ...character, macro: { ...character.macro, [key]: value } });
 
   return (
     <section className="panel makehuman-editor">
       <div className="mh-profile">
-        <div className="mh-profile-title">
-          <div>
-            <span className="eyebrow">MakeHuman hm08</span>
-            <h2>Character</h2>
-          </div>
-          <button className="ghost-button" type="button" onClick={onReset}>Reset</button>
-        </div>
-        <div className="segmented-control" aria-label="Sex / topology lane">
+        <div className="mh-profile-title"><div><span className="eyebrow">MakeHuman hm08</span><h2>Character</h2></div>
+          <button className="ghost-button" type="button" onClick={onReset}>Reset</button></div>
+        <div className="segmented-control">
           {(['male','female','alien'] as CharacterLane[]).map((lane) => (
-            <button key={lane} type="button" className={character.lane === lane ? 'active' : ''} onClick={() => changeLane(lane)}>
-              {lane}
-            </button>
+            <button key={lane} type="button" className={character.lane === lane ? 'active' : ''} onClick={() => changeLane(lane)}>{lane}</button>
           ))}
         </div>
-        <div className="segmented-control style-control" aria-label="Character style">
+        <div className="segmented-control style-control">
           {([['stylized','Stylized'],['semiReal','Semi-real'],['realHuman','Real human']] as Array<[CharacterStyle,string]>).map(([style,label]) => (
-            <button key={style} type="button" className={character.style === style ? 'active' : ''} onClick={() => changeStyle(style)}>
-              {label}
-            </button>
+            <button key={style} type="button" className={character.style === style ? 'active' : ''} onClick={() => changeStyle(style)}>{label}</button>
           ))}
         </div>
       </div>
 
-      <nav className="mh-editor-tabs" aria-label="Character editor">
-        {([
-          ['modeling','Modeling'],['materials','Materials'],['wardrobe','Wardrobe'],['output','Output']
-        ] as Array<[EditorTab,string]>).map(([id,label]) => (
+      <nav className="mh-editor-tabs">
+        {([['modeling','Modeling'],['materials','Materials'],['wardrobe','Geometry'],['output','Output']] as Array<[EditorTab,string]>).map(([id,label]) => (
           <button key={id} type="button" className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>
         ))}
       </nav>
 
-      {tab === 'modeling' && activeGroup && (
-        <div className="mh-modeling">
-          <nav className="mh-category-list" aria-label="MakeHuman modifier group">
-            {groups.map((group) => (
-              <button key={group.id} type="button" className={activeGroup.id === group.id ? 'active' : ''} onClick={() => setGroupId(group.id)}>
-                <strong>{group.label}</strong><span>{group.controls.length}</span>
-              </button>
-            ))}
-          </nav>
-          <div className="mh-control-pane">
-            <div className="mh-pane-heading">
-              <strong>{activeGroup.label}</strong>
-              <span>{activeGroup.description}</span>
-            </div>
-            <div className="control-stack">
-              {activeGroup.id === 'macro' && (
-                <>
-                  {([
-                    ['muscle', 'Muscle'],
-                    ['weight', 'Weight']
-                  ] as const).map(([key, label]) => (
-                    <label className="range-control" key={key}>
-                      <span><strong>{label}</strong><output>{character.macro[key].toFixed(2)}</output></span>
-                      <input type="range" min="0" max="1" step="0.01" value={character.macro[key]}
-                        onChange={(event) => onChange({ ...character, macro: { ...character.macro, [key]: Number(event.target.value) } })} />
-                    </label>
-                  ))}
-                </>
-              )}
-              {activeGroup.controls.map((morph) => (
-                <label className="range-control" key={morph.key}>
-                  <span><strong>{morph.label}</strong><output>{character.morphs[morph.key].toFixed(2)}</output></span>
-                  <input type="range" min={morph.min} max={morph.max} step={morph.step ?? 0.01}
-                    value={character.morphs[morph.key]}
-                    onChange={(event) => updateMorph(morph.key, Number(event.target.value))} />
+      {tab === 'modeling' && (
+        <div className="mh-tab-body">
+          {character.lane !== 'alien' && (
+            <div className="mh-macro-panel">
+              <div className="mh-pane-heading"><strong>Main</strong><span>Native MakeHuman phenotype dependencies.</span></div>
+              <div className="control-stack">
+                {MACROS.map(({ key, label }) => (
+                  <label className="range-control" key={key}>
+                    <span><strong>{label}</strong><output>{character.macro[key].toFixed(2)}</output></span>
+                    <input type="range" min="0" max="1" step="0.01" value={character.macro[key]}
+                      onChange={(event) => setMacro(key, Number(event.target.value))} />
+                  </label>
+                ))}
+                <label className="range-control">
+                  <span><strong>Height</strong><output>{character.morphs.height.toFixed(2)}</output></span>
+                  <input type="range" min="0.78" max="1.24" step="0.01" value={character.morphs.height}
+                    onChange={(event) => onChange({ ...character, morphs: { ...character.morphs, height: Number(event.target.value) } })} />
                 </label>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
+          {character.lane !== 'alien' ? <NativeMakeHumanControls character={character} onChange={onChange} /> :
+            <div className="mh-native-empty">Alien modeling remains on the custom topology/morph lane.</div>}
         </div>
       )}
 
       {tab === 'materials' && (
         <div className="mh-tab-body">
-          <div className="toggle-row">
-            <label><input type="checkbox" checked={character.appearance.hairEnabled}
-              onChange={(event) => updateAppearance('hairEnabled', event.target.checked)} /><span>Hair enabled</span></label>
-          </div>
-          <div className="color-grid">
-            {COLORS.map((color) => (
-              <label className="color-control" key={color.key}><span>{color.label}</span>
-                <input type="color" value={character.appearance[color.key]}
-                  onChange={(event) => updateAppearance(color.key, event.target.value)} /></label>
-            ))}
-          </div>
-          <div className="control-stack surface-controls">
-            {SURFACE_CONTROLS.map((control) => (
-              <label className="range-control" key={control.key}>
-                <span><strong>{control.label}</strong><output>{character.appearance[control.key].toFixed(2)}</output></span>
-                <input type="range" min={control.min} max={control.max} step="0.01"
-                  value={character.appearance[control.key]}
-                  onChange={(event) => updateAppearance(control.key, Number(event.target.value))} />
-              </label>
-            ))}
-          </div>
+          <div className="toggle-row"><label><input type="checkbox" checked={character.appearance.hairEnabled}
+            onChange={(event) => updateAppearance('hairEnabled', event.target.checked)} /><span>Hair enabled</span></label></div>
+          <div className="color-grid">{COLORS.map((color) => (
+            <label className="color-control" key={color.key}><span>{color.label}</span>
+              <input type="color" value={character.appearance[color.key]} onChange={(event) => updateAppearance(color.key, event.target.value)} /></label>
+          ))}</div>
+          <div className="control-stack surface-controls">{SURFACE_CONTROLS.map((control) => (
+            <label className="range-control" key={control.key}><span><strong>{control.label}</strong><output>{character.appearance[control.key].toFixed(2)}</output></span>
+              <input type="range" min={control.min} max={control.max} step="0.01" value={character.appearance[control.key]}
+                onChange={(event) => updateAppearance(control.key, Number(event.target.value))} /></label>
+          ))}</div>
         </div>
       )}
 
       {tab === 'wardrobe' && (
-        <div className="wardrobe-grid mh-tab-body">
-          {WARDROBE.map((item) => (
-            <button className={character.wardrobe[item.slot] ? 'wardrobe-card active' : 'wardrobe-card'}
-              type="button" key={item.slot} onClick={() => toggleWardrobe(item.slot)} aria-pressed={character.wardrobe[item.slot]}>
-              <span className="wardrobe-title">{item.label}</span><span>{item.description}</span>
-              <strong>{character.wardrobe[item.slot] ? 'On' : 'Off'}</strong>
-            </button>
-          ))}
-        </div>
+        <div className="wardrobe-grid mh-tab-body">{WARDROBE.map((item) => (
+          <button className={character.wardrobe[item.slot] ? 'wardrobe-card active' : 'wardrobe-card'} type="button" key={item.slot}
+            onClick={() => toggleWardrobe(item.slot)} aria-pressed={character.wardrobe[item.slot]}>
+            <span className="wardrobe-title">{item.label}</span><span>{item.description}</span><strong>{character.wardrobe[item.slot] ? 'On' : 'Off'}</strong>
+          </button>
+        ))}</div>
       )}
 
       {tab === 'output' && (
         <div className="mh-tab-body output-settings">
-          <label className="select-control"><span>Output target</span>
-            <select value={character.renderTarget} onChange={(event) => onChange({ ...character, renderTarget: event.target.value as CharacterState['renderTarget'] })}>
-              <option value="general">General / GLB</option><option value="unreal">Unreal / FBX</option><option value="print">3D print / STL</option>
-            </select>
-          </label>
-          <label className="setting-check"><input type="checkbox" checked={character.rigCharacter}
-            onChange={(event) => onChange({ ...character, rigCharacter: event.target.checked })} /><span><strong>Rig character</strong><small>Use the MakeHuman landmark skeleton and skin weights.</small></span></label>
-          <label className="setting-check"><input type="checkbox" checked={character.generateTextures}
-            onChange={(event) => onChange({ ...character, generateTextures: event.target.checked })} /><span><strong>Generate textures</strong><small>Keep the PBR material contract in the export recipe.</small></span></label>
-          <label className="setting-check"><input type="checkbox" checked={character.blenderCleanup}
-            onChange={(event) => onChange({ ...character, blenderCleanup: event.target.checked })} /><span><strong>Blender cleanup</strong><small>Prepare the production mesh for the selected output target.</small></span></label>
+          <label className="select-control"><span>Output target</span><select value={character.renderTarget}
+            onChange={(event) => onChange({ ...character, renderTarget: event.target.value as CharacterState['renderTarget'] })}>
+            <option value="general">General / GLB</option><option value="unreal">Unreal / FBX</option><option value="print">3D print / STL</option>
+          </select></label>
+          <label className="setting-check"><input type="checkbox" checked={character.rigCharacter} onChange={(event) => onChange({ ...character, rigCharacter: event.target.checked })} />
+            <span><strong>Rig character</strong><small>Use the MakeHuman landmark skeleton and skin weights.</small></span></label>
+          <label className="setting-check"><input type="checkbox" checked={character.generateTextures} onChange={(event) => onChange({ ...character, generateTextures: event.target.checked })} />
+            <span><strong>Generate textures</strong><small>Keep the PBR material contract in the export recipe.</small></span></label>
+          <label className="setting-check"><input type="checkbox" checked={character.blenderCleanup} onChange={(event) => onChange({ ...character, blenderCleanup: event.target.checked })} />
+            <span><strong>Blender cleanup</strong><small>Prepare the production mesh for the selected output target.</small></span></label>
         </div>
       )}
     </section>
