@@ -98,7 +98,7 @@ const byKeys = (controls: MorphControl[], keys: Array<keyof BodyMorphs>) =>
 
 export function makeHumanControlGroups(lane: CharacterLane): MakeHumanControlGroup[] {
   const controls = MORPH_CONTROLS[lane];
-  return [
+  const groups: MakeHumanControlGroup[] = [
     {
       id: 'macro',
       label: 'Macro',
@@ -139,7 +139,8 @@ export function makeHumanControlGroups(lane: CharacterLane): MakeHumanControlGro
         'armLength','armThickness','legLength','legThickness','handSize','footSize'
       ])
     }
-  ].filter((group) => group.controls.length > 0);
+  ];
+  return groups.filter((group) => group.controls.length > 0);
 }
 
 const LANE_MORPHS: Record<CharacterLane, Partial<BodyMorphs>> = {
