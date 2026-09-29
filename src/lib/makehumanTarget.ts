@@ -6,8 +6,10 @@ export interface MakeHumanTargetDelta {
 }
 
 /**
- * Parse the documented MakeHuman .target format into the Y-up coordinates used
- * by 3D Builder. Target rows are stored as vertex, X, Z, inverted-Y.
+ * hm08 .target rows serialize the MakeHuman displacement in the same effective
+ * X/Y-up/Z-depth space as base.obj, despite the historical X/Z/Y naming used
+ * by Blender-facing documentation. Keep the three numeric components in file
+ * order so targets deform the Y-up hm08 basemesh along the correct axes.
  */
 export function parseMakeHumanTarget(text: string): MakeHumanTargetDelta[] {
   const deltas: MakeHumanTargetDelta[] = [];
@@ -18,10 +20,10 @@ export function parseMakeHumanTarget(text: string): MakeHumanTargetDelta[] {
     if (parts.length !== 4) continue;
     const vertex = Number.parseInt(parts[0], 10);
     const x = Number(parts[1]);
-    const storedZ = Number(parts[2]);
-    const storedY = Number(parts[3]);
-    if (![vertex, x, storedZ, storedY].every(Number.isFinite) || vertex < 0) continue;
-    deltas.push({ vertex, x, y: -storedY, z: storedZ });
+    const y = Number(parts[2]);
+    const z = Number(parts[3]);
+    if (![vertex, x, y, z].every(Number.isFinite) || vertex < 0) continue;
+    deltas.push({ vertex, x, y, z });
   }
   return deltas;
 }
