@@ -64,6 +64,10 @@ export default function MultiViewFitPanel({
               <strong>{Math.round(analysis.fitQuality * 100)}%</strong>
             </div>
             <div>
+              <span>Landmark detection</span>
+              <strong>{Math.round(analysis.landmarkConfidence * 100)}%</strong>
+            </div>
+            <div>
               <span>Views analyzed</span>
               <strong>{count}/3</strong>
             </div>
