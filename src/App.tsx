@@ -18,6 +18,7 @@ import {
   type BlenderStatus
 } from './lib/desktop';
 import { analyzeMultiView } from './lib/multiview';
+import { applyIdentityFit, solveIdentityFromReferences } from './lib/reconstructionFit';
 import {
   DEFAULT_CHARACTER,
   type BodyMorphs,
@@ -145,41 +146,26 @@ export default function App() {
       const referenceCount = Object.values(references).filter(Boolean).length;
 
       if (referenceCount >= 2) {
-        setStatus(`Analyzing ${referenceCount} reference views and fitting canonical body…`);
-        const analysis = await analyzeMultiView(references);
-        applyFit(analysis.morphPatch, analysis);
+        setStatus(`Solving one shared identity from ${referenceCount} views…`);
+        const fit = await solveIdentityFromReferences(references);
+        setCharacter((current) => applyIdentityFit(current, fit));
+        setLastFit(fit.analysis);
+        setViewMode('canonical');
+        setBuildStage('done');
+        setStatus(
+          `Identity fit complete · objective ${fit.objective.total.toFixed(3)} · cross-view ${Math.round(fit.analysis.crossViewConsistency * 100)}%. Neural reconstruction is now optional refinement.`
+        );
+        return;
       }
 
       setBuildStage('ai');
-      setStatus(
-        referenceCount === 3
-          ? 'Canonical 3-view fit complete. Running AI geometry candidate…'
-          : 'Running AI geometry candidate from the front reference…'
-      );
-
-      try {
-        const inputPath = await stageReference(front);
-        const meshPath = await runReconstruction('triposr', inputPath);
-
-        setGeneratedMesh(meshPath);
-        setViewMode('ai');
-        setBuildStage('done');
-        setStatus(
-          referenceCount === 3
-            ? 'Multi-view body fit + AI mesh candidate complete. Blender can inspect the raw candidate while the builder keeps the editable canonical character.'
-            : 'AI mesh generated. Add all three views for the strongest canonical fit.'
-        );
-      } catch (reconstructionError) {
-        if (referenceCount >= 2) {
-          setBuildStage('fallback');
-          setStatus(
-            `Canonical ${referenceCount}-view fit complete. AI geometry candidate skipped: ${String(reconstructionError)}`
-          );
-        } else {
-          setBuildStage('fallback');
-          throw reconstructionError;
-        }
-      }
+      setStatus('Only one reference is available. Running the single-view geometry fallback…');
+      const inputPath = await stageReference(front);
+      const meshPath = await runReconstruction('triposr', inputPath);
+      setGeneratedMesh(meshPath);
+      setViewMode('ai');
+      setBuildStage('done');
+      setStatus('Single-view geometry candidate complete. Add side/back references to build a shared editable identity.');
     } catch (error) {
       setBuildStage('fallback');
       setStatus(`Build failed: ${String(error)}`);
@@ -334,14 +320,14 @@ export default function App() {
               <span>02</span>
               <div>
                 <strong>Reference fit</strong>
-                <small>Front · side · back → supported MakeHuman modifiers</small>
+                <small>Front · side · back → one shared identity objective</small>
               </div>
             </div>
             <div className={buildStage === 'ai' ? 'pipeline-step active' : generatedMesh ? 'pipeline-step done' : 'pipeline-step next'}>
               <span>03</span>
               <div>
                 <strong>Geometry evidence</strong>
-                <small>TripoSR local candidate · GPU models stay optional</small>
+                <small>Optional neural prior · never replaces editable identity</small>
               </div>
             </div>
             <div className="pipeline-step">
