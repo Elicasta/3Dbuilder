@@ -6,7 +6,7 @@ export interface ResolvedMorphTarget {
   weight: number;
 }
 
-type Direction = { stems: string[]; span?: number };
+type Direction = { stems: string[]; span?: number; negative?: string; positive?: string };
 
 const MORPH_TARGETS: Partial<Record<keyof BodyMorphs, Direction>> = {
   shoulders: { stems: ['torso/torso-vshape'] },
@@ -20,17 +20,22 @@ const MORPH_TARGETS: Partial<Record<keyof BodyMorphs, Direction>> = {
   headScale: { stems: ['head/head-scale-horiz', 'head/head-scale-vert', 'head/head-scale-depth'] },
   faceWidth: { stems: ['head/head-scale-horiz'] },
   faceDepth: { stems: ['head/head-scale-depth'] },
+  craniumScale: { stems: ['head/head-scale-horiz', 'head/head-scale-vert'] },
+  jawWidth: { stems: ['chin/chin-width'] },
   jawHeight: { stems: ['chin/chin-height'] },
   chinWidth: { stems: ['chin/chin-width'] },
   chinProjection: { stems: ['chin/chin-prominent'] },
   cheekWidth: { stems: ['cheek/l-cheek-bones', 'cheek/r-cheek-bones'] },
-  browHeight: { stems: ['eyebrows/eyebrows-trans'] },
+  eyeSpacing: { stems: ['eyes/l-eye-trans', 'eyes/r-eye-trans'], negative: 'in', positive: 'out' },
+  browHeight: { stems: ['eyebrows/eyebrows-trans'], negative: 'down', positive: 'up' },
   noseWidth: { stems: ['nose/nose-scale-horiz'] },
   noseLength: { stems: ['nose/nose-scale-vert'] },
   noseProjection: { stems: ['nose/nose-scale-depth'] },
   mouthWidth: { stems: ['mouth/mouth-scale-horiz'] },
   lipFullness: { stems: ['mouth/mouth-lowerlip-volume', 'mouth/mouth-upperlip-volume'] },
   earSize: { stems: ['ears/l-ear-scale', 'ears/r-ear-scale'] },
+  bust: { stems: ['breast/breast-dist'] },
+  bustProjection: { stems: ['breast/breast-point'] },
   eyeScale: { stems: ['eyes/l-eye-scale', 'eyes/r-eye-scale'] },
   eyeHeight: { stems: ['eyes/l-eye-height1', 'eyes/r-eye-height1'] },
   handSize: { stems: ['armslegs/l-hand-scale', 'armslegs/r-hand-scale'] },
@@ -117,8 +122,14 @@ export function resolveMakeHumanMacroTargets(
   return [...result].map(([path, weight]) => ({ path, weight }));
 }
 
-function findDirectionalTarget(catalog: readonly string[], stem: string, positive: boolean): string | null {
-  const suffix = positive ? '-incr.target' : '-decr.target';
+function findDirectionalTarget(
+  catalog: readonly string[],
+  stem: string,
+  positive: boolean,
+  negativeSuffix = 'decr',
+  positiveSuffix = 'incr'
+): string | null {
+  const suffix = '-' + (positive ? positiveSuffix : negativeSuffix) + '.target';
   const normalized = stem.toLowerCase();
   return catalog.find((path) => {
     const value = path.toLowerCase();
@@ -140,7 +151,7 @@ export function resolveMakeHumanMorphTargets(
     const positive = delta > 0;
     const weight = Math.min(1, Math.abs(delta) / (direction.span ?? 0.35));
     for (const stem of direction.stems) {
-      const path = findDirectionalTarget(catalog, stem, positive);
+      const path = findDirectionalTarget(catalog, stem, positive, direction.negative, direction.positive);
       if (path) combined.set(path, Math.max(combined.get(path) ?? 0, weight));
     }
   }
