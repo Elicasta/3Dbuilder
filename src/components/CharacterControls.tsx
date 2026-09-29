@@ -65,7 +65,11 @@ export default function CharacterControls({ character, onChange, onReset }: Char
   const changeLane = (lane: CharacterLane) => onChange(defaultsForLane(lane, character.style, character));
   const changeStyle = (style: CharacterStyle) => onChange(applyStyle(style, character));
   const setMacro = (key: keyof MakeHumanMacroState, value: number) =>
-    onChange({ ...character, macro: { ...character.macro, [key]: value } });
+    onChange({
+      ...character,
+      macro: { ...character.macro, [key]: value },
+      anatomy: key==='age'&&value<.5 ? { ...character.anatomy, mode:'off' } : character.anatomy
+    });
   const setAnatomy = <K extends keyof CharacterState['anatomy']>(key: K, value: CharacterState['anatomy'][K]) =>
     onChange({ ...character, anatomy: { ...character.anatomy, [key]: value } });
   const setNativeModifier = (id:string,value:number) =>
@@ -117,7 +121,8 @@ export default function CharacterControls({ character, onChange, onReset }: Char
           )}
           {character.lane !== 'alien' && (
             <div className="mh-macro-panel">
-              <div className="mh-pane-heading"><strong>Anatomy</strong><span>Optional external anatomy for character-production work.</span></div>
+              <div className="mh-pane-heading"><strong>Anatomy</strong><span>Optional adult anatomy for character-production work.</span></div>
+              {character.macro.age<.5 ? <div className="mh-native-empty">Explicit anatomy is available for adult phenotypes.</div> : <>
               <div className="segmented-control">
                 {(['off','simplified','detailed'] as AnatomyMode[]).map((mode)=>(
                   <button key={mode} type="button" className={character.anatomy.mode===mode?'active':''}
@@ -129,7 +134,9 @@ export default function CharacterControls({ character, onChange, onReset }: Char
                   {([
                     ['penisLength','Penis length'],
                     ['penisGirth','Penis circumference'],
-                    ['testicleSize','Testicle size']
+                    ['glansSize','Glans size'],
+                    ['testicleSize','Testicle size'],
+                    ['scrotumDrop','Scrotal drop']
                   ] as Array<[keyof CharacterState['anatomy'],string]>).map(([key,label])=>(
                     <label className="range-control" key={key}>
                       <span><strong>{label}</strong><output>{Number(character.anatomy[key]).toFixed(2)}</output></span>
@@ -142,7 +149,9 @@ export default function CharacterControls({ character, onChange, onReset }: Char
                     ['vulvaWidth','Vulva width'],
                     ['labiaMajora','Outer lips · labia majora'],
                     ['labiaMinora','Inner lips · labia minora'],
-                    ['clitoralSize','Clitoral prominence']
+                    ['clitoralSize','Clitoral prominence'],
+                    ['vaginalOpening','Vaginal opening'],
+                    ['monsPubis','Mons pubis volume']
                   ] as Array<[keyof CharacterState['anatomy'],string]>).map(([key,label])=>(
                     <label className="range-control" key={key}>
                       <span><strong>{label}</strong><output>{Number(character.anatomy[key]).toFixed(2)}</output></span>
@@ -152,6 +161,7 @@ export default function CharacterControls({ character, onChange, onReset }: Char
                   ))}
                 </>}
               </div>}
+              </>}
             </div>
           )}
           {character.lane==='female' && (
