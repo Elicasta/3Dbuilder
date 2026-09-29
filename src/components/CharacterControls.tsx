@@ -111,8 +111,7 @@ export default function CharacterControls({ character, onChange, onReset }: Char
                 <>
                   {([
                     ['muscle', 'Muscle'],
-                    ['weight', 'Weight'],
-                    ['proportions', 'Proportions']
+                    ['weight', 'Weight']
                   ] as const).map(([key, label]) => (
                     <label className="range-control" key={key}>
                       <span><strong>{label}</strong><output>{character.macro[key].toFixed(2)}</output></span>
