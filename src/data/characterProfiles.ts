@@ -37,26 +37,43 @@ const SHARED: MorphControl[] = [
   { key: 'headScale', label: 'Head scale', min: 0.78, max: 1.28 }
 ];
 
+const FACE: MorphControl[] = [
+  { key:'faceWidth', label:'Face width', min:.78, max:1.24 },
+  { key:'faceDepth', label:'Face depth', min:.78, max:1.25 },
+  { key:'jawWidth', label:'Jaw width', min:.72, max:1.30 },
+  { key:'jawHeight', label:'Jaw height', min:.78, max:1.24 },
+  { key:'chinWidth', label:'Chin width', min:.72, max:1.30 },
+  { key:'chinProjection', label:'Chin projection', min:.72, max:1.32 },
+  { key:'cheekWidth', label:'Cheekbones', min:.78, max:1.24 },
+  { key:'eyeScale', label:'Eye size', min:.80, max:1.28 },
+  { key:'eyeSpacing', label:'Eye spacing', min:.78, max:1.25 },
+  { key:'eyeHeight', label:'Eye height', min:.82, max:1.20 },
+  { key:'browHeight', label:'Brow height', min:.82, max:1.24 },
+  { key:'noseWidth', label:'Nose width', min:.72, max:1.32 },
+  { key:'noseLength', label:'Nose length', min:.76, max:1.30 },
+  { key:'noseProjection', label:'Nose projection', min:.68, max:1.42 },
+  { key:'mouthWidth', label:'Mouth width', min:.72, max:1.30 },
+  { key:'lipFullness', label:'Lip fullness', min:.62, max:1.50 },
+  { key:'earSize', label:'Ear size', min:.72, max:1.35 }
+];
+
 export const MORPH_CONTROLS: Record<CharacterLane, MorphControl[]> = {
   male: [
     ...SHARED,
-    { key: 'jawWidth', label: 'Jaw width', min: 0.76, max: 1.28 },
     { key: 'craniumScale', label: 'Cranium', min: 0.86, max: 1.18 },
-    { key: 'eyeScale', label: 'Eye size', min: 0.84, max: 1.2 }
+    ...FACE
   ],
   female: [
     ...SHARED,
     { key: 'bust', label: 'Bust width', min: 0.72, max: 1.4 },
     { key: 'bustProjection', label: 'Bust projection', min: 0.65, max: 1.5 },
-    { key: 'jawWidth', label: 'Jaw width', min: 0.72, max: 1.2 },
     { key: 'craniumScale', label: 'Cranium', min: 0.86, max: 1.18 },
-    { key: 'eyeScale', label: 'Eye size', min: 0.86, max: 1.22 }
+    ...FACE
   ],
   alien: [
     ...SHARED,
     { key: 'craniumScale', label: 'Cranium', min: 0.9, max: 1.85 },
-    { key: 'eyeScale', label: 'Eye size', min: 0.8, max: 2.1 },
-    { key: 'jawWidth', label: 'Jaw width', min: 0.55, max: 1.4 }
+    ...FACE
   ]
 };
 
