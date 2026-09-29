@@ -313,11 +313,24 @@ fn makehuman_asset_status(app: tauri::AppHandle) -> Result<MakeHumanAssetStatus,
     let source = root.join("source");
     let data = source.join("makehuman").join("data");
     let targets = data.join("targets");
-    let base_candidates = [
-        data.join("3dobjs").join("base.obj"),
-        data.join("3dobjs").join("hm08.obj"),
-    ];
-    let base = base_candidates.into_iter().find(|p| p.exists());
+    let mut base = None;
+    let mut stack = vec![source.clone()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            let file = path.file_name().and_then(|x| x.to_str()).unwrap_or("").to_ascii_lowercase();
+            if matches!(file.as_str(), "base.obj" | "hm08.obj" | "hm08_base.obj") {
+                base = Some(path);
+                break;
+            }
+        }
+        if base.is_some() { break; }
+    }
     Ok(MakeHumanAssetStatus {
         installed: source.join(".git").exists(),
         base_mesh_path: base.map(|p| p.to_string_lossy().to_string()),
