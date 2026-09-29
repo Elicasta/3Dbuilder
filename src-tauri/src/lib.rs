@@ -35,12 +35,22 @@ struct EngineStatus {
     source_path: Option<String>,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MakeHumanAssetStatus {
+    installed: bool,
+    base_mesh_path: Option<String>,
+    targets_path: Option<String>,
+    target_count: usize,
+}
+
 struct EngineSpec {
     id: &'static str,
     repository: &'static str,
 }
 
 const ENGINES: &[EngineSpec] = &[
+    EngineSpec { id: "makehuman", repository: "https://github.com/makehumancommunity/makehuman.git" },
     EngineSpec { id: "mpfb", repository: "https://github.com/makehumancommunity/mpfb2.git" },
     EngineSpec { id: "triposr", repository: "https://github.com/VAST-AI-Research/TripoSR.git" },
     EngineSpec { id: "charactergen", repository: "https://github.com/zjp-shadow/CharacterGen.git" },
@@ -279,6 +289,41 @@ fn engine_statuses(app: tauri::AppHandle) -> Result<Vec<EngineStatus>, String> {
             }
         })
         .collect())
+}
+
+
+fn count_files_with_extension(root: &Path, extension: &str) -> usize {
+    if !root.exists() { return 0; }
+    let mut count = 0usize;
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() { stack.push(path); }
+            else if path.extension().and_then(|x| x.to_str()) == Some(extension) { count += 1; }
+        }
+    }
+    count
+}
+
+#[tauri::command]
+fn makehuman_asset_status(app: tauri::AppHandle) -> Result<MakeHumanAssetStatus, String> {
+    let root = engine_root(&app, "makehuman")?;
+    let source = root.join("source");
+    let data = source.join("makehuman").join("data");
+    let targets = data.join("targets");
+    let base_candidates = [
+        data.join("3dobjs").join("base.obj"),
+        data.join("3dobjs").join("hm08.obj"),
+    ];
+    let base = base_candidates.into_iter().find(|p| p.exists());
+    Ok(MakeHumanAssetStatus {
+        installed: source.join(".git").exists(),
+        base_mesh_path: base.map(|p| p.to_string_lossy().to_string()),
+        targets_path: targets.exists().then(|| targets.to_string_lossy().to_string()),
+        target_count: count_files_with_extension(&targets, "target"),
+    })
 }
 
 #[tauri::command]
@@ -821,7 +866,7 @@ pub fn run() {
             open_in_blender,
             open_character_in_blender,
             save_recipe
-        ])
+        , makehuman_asset_status])
         .run(tauri::generate_context!())
         .expect("error while running 3D Builder");
 }
