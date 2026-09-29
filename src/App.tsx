@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import CharacterControls from './components/CharacterControls';
 import CharacterViewport from './components/CharacterViewport';
 import ReferenceUploader from './components/ReferenceUploader';
+import EngineLab from './components/EngineLab';
 import {
   detectBlender,
   saveCharacterRecipe,
@@ -151,6 +152,8 @@ export default function App() {
               </div>
             </div>
           </section>
+
+          <EngineLab />
         </div>
       </section>
     </main>
