@@ -78,23 +78,11 @@ export const MORPH_CONTROLS: Record<CharacterLane, MorphControl[]> = {
 };
 
 const LANE_MORPHS: Record<CharacterLane, Partial<BodyMorphs>> = {
-  male: {
-    shoulders: 1.08,
-    chest: 1.07,
-    hips: 0.96,
-    jawWidth: 1.05,
-    craniumScale: 1
-  },
-  female: {
-    shoulders: 0.96,
-    chest: 0.98,
-    waist: 0.9,
-    hips: 1.08,
-    hipDepth: 1.06,
-    jawWidth: 0.94,
-    bust: 1.06,
-    bustProjection: 1.08
-  },
+  // Human sex differences now come from MakeHuman's native Gender macro.
+  // Keep human controls neutral so changing lane does not secretly stack a
+  // second hand-authored body shape on top of the canonical macro.
+  male: {},
+  female: {},
   alien: {
     height: 1.06,
     shoulders: 0.92,
