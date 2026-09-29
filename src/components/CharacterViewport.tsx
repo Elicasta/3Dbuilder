@@ -1,6 +1,6 @@
 import { ContactShadows, OrbitControls, useGLTF } from '@react-three/drei';
 import { Suspense, useEffect, useMemo } from 'react';
-import { Box3, Group, Vector3 } from 'three';
+import { Box3, BufferGeometry, Float32BufferAttribute, Group, Vector3 } from 'three';
 import { Canvas } from '@react-three/fiber';
 import type { CharacterState } from '../types/character';
 
@@ -19,6 +19,76 @@ function Surface({
       roughness={roughness}
       metalness={metalness}
     />
+  );
+}
+
+function ContinuousTorso({
+  rings,
+  color,
+  roughness,
+  radialSegments = 48
+}: {
+  rings: Array<{ y: number; rx: number; rz: number }>;
+  color: string;
+  roughness?: number;
+  radialSegments?: number;
+}) {
+  const geometry = useMemo(() => {
+    const vertices: number[] = [];
+    const indices: number[] = [];
+
+    for (const ring of rings) {
+      for (let segment = 0; segment < radialSegments; segment += 1) {
+        const angle = (segment / radialSegments) * Math.PI * 2;
+        vertices.push(
+          Math.cos(angle) * ring.rx,
+          ring.y,
+          Math.sin(angle) * ring.rz
+        );
+      }
+    }
+
+    for (let ring = 0; ring < rings.length - 1; ring += 1) {
+      const current = ring * radialSegments;
+      const next = (ring + 1) * radialSegments;
+      for (let segment = 0; segment < radialSegments; segment += 1) {
+        const following = (segment + 1) % radialSegments;
+        indices.push(
+          current + segment,
+          next + segment,
+          next + following,
+          current + segment,
+          next + following,
+          current + following
+        );
+      }
+    }
+
+    const bottomCenter = vertices.length / 3;
+    vertices.push(0, rings[0].y, 0);
+    const topCenter = vertices.length / 3;
+    vertices.push(0, rings[rings.length - 1].y, 0);
+
+    for (let segment = 0; segment < radialSegments; segment += 1) {
+      const following = (segment + 1) % radialSegments;
+      indices.push(bottomCenter, following, segment);
+      const top = (rings.length - 1) * radialSegments;
+      indices.push(topCenter, top + segment, top + following);
+    }
+
+    const result = new BufferGeometry();
+    result.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+    result.setIndex(indices);
+    result.computeVertexNormals();
+    return result;
+  }, [rings, radialSegments]);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  return (
+    <mesh geometry={geometry} castShadow receiveShadow>
+      <Surface color={color} roughness={roughness} />
+    </mesh>
   );
 }
 
@@ -145,16 +215,23 @@ function CharacterMesh({ character }: { character: CharacterState }) {
 
   return (
     <group position={[0, -0.2, 0]}>
-      <mesh position={[0, torsoY, 0]} scale={[0.86 * build * chest * shoulder, 0.86 * height * torsoLength, 0.48 * build * chestDepth]} castShadow>
-        <capsuleGeometry args={[0.58, 1.18, 12, realistic ? 36 : 28]} />
-        <Surface color={appearance.skin} roughness={skinRoughness} />
-      </mesh>
+      <ContinuousTorso
+        color={appearance.skin}
+        roughness={skinRoughness}
+        radialSegments={realistic ? 64 : 48}
+        rings={[
+          { y: 0.48 * height, rx: 0.48 * build * hips, rz: 0.34 * build * hipDepth },
+          { y: 0.72 * height, rx: 0.58 * build * hips, rz: 0.4 * build * hipDepth },
+          { y: 0.98 * height, rx: 0.5 * build * waist, rz: 0.34 * build * waistDepth },
+          { y: 1.28 * height * torsoLength, rx: 0.52 * build * waist, rz: 0.36 * build * waistDepth },
+          { y: torsoY, rx: 0.67 * build * chest, rz: 0.43 * build * chestDepth },
+          { y: 1.82 * height * torsoLength, rx: 0.76 * build * chest * shoulder, rz: 0.46 * build * chestDepth },
+          { y: shoulderY, rx: 0.7 * build * shoulder, rz: 0.42 * build * chestDepth },
+          { y: 2.24 * height * torsoLength, rx: 0.4 * build * morphs.neckThickness, rz: 0.34 * build * morphs.neckThickness }
+        ]}
+      />
       <Joint position={[-shoulderJointX, shoulderY, 0]} scale={[0.78 * build, 0.9 * build, 0.78 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
       <Joint position={[shoulderJointX, shoulderY, 0]} scale={[0.78 * build, 0.9 * build, 0.78 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
-      <mesh position={[0, 0.72 * height, 0]} scale={[0.78 * build * hips, 0.38 * height, 0.5 * build * hipDepth]} castShadow>
-        <capsuleGeometry args={[0.5, 0.5, 10, 24]} />
-        <Surface color={appearance.skinSecondary} roughness={skinRoughness} />
-      </mesh>
       <Joint position={[-hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
       <Joint position={[hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
       <mesh position={[0, neckY, 0]} scale={[0.38 * morphs.neckThickness, 0.48 * morphs.neckLength, 0.36 * morphs.neckThickness]} castShadow>
