@@ -37,11 +37,11 @@ const MODIFIERS: Partial<Record<keyof BodyMorphs, ModifierSpec>> = {
   legLength: {
     stems: ['armslegs/upperlegs-height', 'armslegs/lowerlegs-height']
   },
-  thighThickness: {
-    stems: ['armslegs/l-upperleg-scale-horiz', 'armslegs/r-upperleg-scale-horiz']
-  },
-  calfThickness: {
-    stems: ['armslegs/l-lowerleg-scale-horiz', 'armslegs/r-lowerleg-scale-horiz']
+  legThickness: {
+    stems: [
+      'armslegs/l-upperleg-scale-horiz', 'armslegs/r-upperleg-scale-horiz',
+      'armslegs/l-lowerleg-scale-horiz', 'armslegs/r-lowerleg-scale-horiz'
+    ]
   },
   neckLength: { stems: ['measure/measure-neck-height'] },
   neckThickness: { stems: ['measure/measure-neck-circ'] },
@@ -50,10 +50,9 @@ const MODIFIERS: Partial<Record<keyof BodyMorphs, ModifierSpec>> = {
   faceDepth: { stems: ['head/head-scale-depth'] },
   craniumScale: { stems: ['head/head-scale-horiz', 'head/head-scale-vert'] },
   jawWidth: { stems: ['chin/chin-width'] },
-  chinLength: { stems: ['chin/chin-height'] },
+  jawHeight: { stems: ['chin/chin-height'] },
   chinProjection: { stems: ['chin/chin-prominent'] },
   cheekWidth: { stems: ['cheek/l-cheek-bones', 'cheek/r-cheek-bones'] },
-  cheekVolume: { stems: ['cheek/l-cheek-volume', 'cheek/r-cheek-volume'] },
   eyeScale: { stems: ['eyes/l-eye-scale', 'eyes/r-eye-scale'] },
   eyeSpacing: {
     stems: ['eyes/l-eye-trans', 'eyes/r-eye-trans'],
@@ -66,11 +65,11 @@ const MODIFIERS: Partial<Record<keyof BodyMorphs, ModifierSpec>> = {
     positive: 'up'
   },
   noseWidth: { stems: ['nose/nose-scale-horiz'] },
-  noseHeight: { stems: ['nose/nose-scale-vert'] },
+  noseLength: { stems: ['nose/nose-scale-vert'] },
   noseProjection: { stems: ['nose/nose-scale-depth'] },
   mouthWidth: { stems: ['mouth/mouth-scale-horiz'] },
   mouthHeight: { stems: ['mouth/mouth-scale-vert'] },
-  lipVolume: {
+  lipFullness: {
     stems: ['mouth/mouth-upperlip-volume', 'mouth/mouth-lowerlip-volume']
   },
   earSize: { stems: ['ears/l-ear-scale', 'ears/r-ear-scale'] },
