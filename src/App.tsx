@@ -5,7 +5,10 @@ import ReferenceUploader from './components/ReferenceUploader';
 import EngineLab from './components/EngineLab';
 import {
   detectBlender,
+  openInBlender,
+  runReconstruction,
   saveCharacterRecipe,
+  stageReference,
   type BlenderStatus
 } from './lib/desktop';
 import {
@@ -26,6 +29,8 @@ export default function App() {
   const [character, setCharacter] = useState<CharacterState>(DEFAULT_CHARACTER);
   const [status, setStatus] = useState('Desktop builder ready');
   const [blender, setBlender] = useState<BlenderStatus | null>(null);
+  const [generatedMesh, setGeneratedMesh] = useState<string | null>(null);
+  const [building, setBuilding] = useState(false);
 
   useEffect(() => {
     detectBlender()
@@ -57,6 +62,41 @@ export default function App() {
     }
   }
 
+  async function buildCharacter() {
+    const front = references.front;
+    if (!front) {
+      setStatus('Add a front reference first. Side and back will join the fusion pipeline next.');
+      return;
+    }
+
+    setBuilding(true);
+    setGeneratedMesh(null);
+    try {
+      setStatus('Staging front reference…');
+      const inputPath = await stageReference(front);
+
+      setStatus('Running TripoSR reconstruction. First run may download model weights…');
+      const meshPath = await runReconstruction('triposr', inputPath);
+
+      setGeneratedMesh(meshPath);
+      setStatus('AI mesh generated. Open it in Blender or continue shaping the canonical character.');
+    } catch (error) {
+      setStatus(`Build failed: ${String(error)}`);
+    } finally {
+      setBuilding(false);
+    }
+  }
+
+  async function openGeneratedMesh() {
+    if (!generatedMesh) return;
+    try {
+      await openInBlender(generatedMesh);
+      setStatus('Generated mesh opened in Blender.');
+    } catch (error) {
+      setStatus(`Could not open Blender: ${String(error)}`);
+    }
+  }
+
   const referenceCount = Object.values(references).filter(Boolean).length;
 
   return (
@@ -81,18 +121,18 @@ export default function App() {
           <button className="secondary-button" type="button" onClick={saveRecipe}>
             Save recipe
           </button>
+          {generatedMesh && (
+            <button className="secondary-button" type="button" onClick={() => void openGeneratedMesh()}>
+              Open AI mesh in Blender
+            </button>
+          )}
           <button
             className="primary-button"
             type="button"
-            onClick={() =>
-              setStatus(
-                referenceCount
-                  ? `Reference build queued from ${referenceCount}/3 views. Reconstruction engine is the next layer.`
-                  : 'Procedural builder is active. Add reference views for reconstruction.'
-              )
-            }
+            disabled={building}
+            onClick={() => void buildCharacter()}
           >
-            Build Character
+            {building ? 'Building…' : 'Build Character'}
           </button>
         </div>
       </header>
