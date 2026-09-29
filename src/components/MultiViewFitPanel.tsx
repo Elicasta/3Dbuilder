@@ -39,7 +39,7 @@ export default function MultiViewFitPanel({ references, onAnalysis }: MultiViewF
       <div className="panel-header split-header">
         <div>
           <h2>Reference diagnostics</h2>
-          <p>Fast silhouette diagnostics here. Build Character runs deeper landmark/refinement fitting.</p>
+          <p>Fast silhouette diagnostics here. Build Character reuses these observations and applies bounded model refinement.</p>
         </div>
         <span className={count === 3 ? 'view-count ready' : 'view-count'}>{count}/3</span>
       </div>
