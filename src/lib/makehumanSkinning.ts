@@ -32,6 +32,7 @@ function makeHierarchy(defs:MakeHumanBone[]){
       origin.sub(new Vector3(...pd.head));parent.add(b);
     }
     b.position.copy(origin);
+    b.userData.restQuaternion=b.quaternion.toArray();
   }
   const roots=defs.filter(d=>!d.parent).map(d=>byName.get(d.name)!);
   return {bones:defs.map(d=>byName.get(d.name)!),roots};
@@ -49,19 +50,24 @@ export function skinMakeHumanGeometry(geometry:BufferGeometry,defs:MakeHumanBone
   const {bones,roots}=makeHierarchy(defs),skeleton=new Skeleton(bones);
   const mesh=new SkinnedMesh(geometry);
   for(const root of roots)mesh.add(root);
+  mesh.updateMatrixWorld(true);
+  for(const root of roots)root.updateWorldMatrix(true,true);
+  skeleton.calculateInverses();
   mesh.bind(skeleton,new Matrix4());
+  mesh.normalizeSkinWeights();
   return {mesh,skeleton,bones};
 }
 
 export function applyMakeHumanPose(bones:Bone[],pose:MakeHumanPose){
-  for(const bone of bones)bone.quaternion.identity();
+  for(const bone of bones){const r=bone.userData.restQuaternion as [number,number,number,number]|undefined;bone.quaternion.fromArray(r??[0,0,0,1]);}
   const byName=new Map(bones.map(b=>[b.name,b]));
   for(const [name,euler] of Object.entries(pose.rotations)){
     const bone=byName.get(name);if(!bone)continue;
     const qx=new Quaternion().setFromAxisAngle(new Vector3(1,0,0),euler[0]);
     const qy=new Quaternion().setFromAxisAngle(new Vector3(0,1,0),euler[1]);
     const qz=new Quaternion().setFromAxisAngle(new Vector3(0,0,1),euler[2]);
-    bone.quaternion.copy(qx.multiply(qy).multiply(qz));
+    const delta=qx.multiply(qy).multiply(qz);
+    bone.quaternion.multiply(delta);
   }
   bones[0]?.updateWorldMatrix(true,true);
 }
