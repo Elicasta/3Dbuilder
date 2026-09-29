@@ -9,7 +9,10 @@ describe('human lane baselines',()=>{
     expect(male.morphs.shoulders).toBeGreaterThan(female.morphs.shoulders);
     expect(female.morphs.hips).toBeGreaterThan(male.morphs.hips);
     expect(female.morphs.waist).toBeLessThan(male.morphs.waist);
-    expect(female.morphs.bust).toBeGreaterThan(male.morphs.bust);
     expect(male.morphs.jawWidth).toBeGreaterThan(female.morphs.jawWidth);
+    expect(female.macro.breastSize).toBeGreaterThan(male.macro.breastSize);
+    expect(female.macro.breastFirmness).toBeGreaterThan(male.macro.breastFirmness);
+    expect(female.morphs.bust).toBe(1);
+    expect(female.morphs.bustProjection).toBe(1);
   });
 });
