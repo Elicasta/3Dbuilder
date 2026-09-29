@@ -38,6 +38,7 @@ export default function App() {
   const [blender, setBlender] = useState<BlenderStatus | null>(null);
   const [generatedMesh, setGeneratedMesh] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
+  const [buildStage, setBuildStage] = useState<'idle' | 'fit' | 'ai' | 'done' | 'fallback'>('idle');
   const [lastFit, setLastFit] = useState<MultiViewAnalysis | null>(null);
   const [viewMode, setViewMode] = useState<'canonical' | 'ai' | 'overlay'>('canonical');
 
@@ -108,6 +109,7 @@ export default function App() {
     }
 
     setBuilding(true);
+    setBuildStage('fit');
     setGeneratedMesh(null);
 
     try {
@@ -119,6 +121,7 @@ export default function App() {
         applyFit(analysis.morphPatch, analysis);
       }
 
+      setBuildStage('ai');
       setStatus(
         referenceCount === 3
           ? 'Canonical 3-view fit complete. Running AI geometry candidate…'
@@ -131,6 +134,7 @@ export default function App() {
 
         setGeneratedMesh(meshPath);
         setViewMode('ai');
+        setBuildStage('done');
         setStatus(
           referenceCount === 3
             ? 'Multi-view body fit + AI mesh candidate complete. Blender can inspect the raw candidate while the builder keeps the editable canonical character.'
@@ -138,14 +142,17 @@ export default function App() {
         );
       } catch (reconstructionError) {
         if (referenceCount >= 2) {
+          setBuildStage('fallback');
           setStatus(
             `Canonical ${referenceCount}-view fit complete. AI geometry candidate skipped: ${String(reconstructionError)}`
           );
         } else {
+          setBuildStage('fallback');
           throw reconstructionError;
         }
       }
     } catch (error) {
+      setBuildStage('fallback');
       setStatus(`Build failed: ${String(error)}`);
     } finally {
       setBuilding(false);
@@ -217,6 +224,7 @@ export default function App() {
       <div className="status-bar">
         <span className="status-dot" />
         <span>{status}</span>
+        {building && <span className="phase-chip">{buildStage === 'fit' ? 'Fitting references' : 'Reconstructing AI mesh'}</span>}
         <span className="status-spacer" />
         <span>{character.lane}</span>
         <span>·</span>
@@ -226,7 +234,7 @@ export default function App() {
         {lastFit && (
           <>
             <span>·</span>
-            <span>fit {Math.round(lastFit.confidence * 100)}%</span>
+            <span>mask {Math.round(lastFit.confidence * 100)}%</span>
           </>
         )}
         <span>·</span>
@@ -267,14 +275,14 @@ export default function App() {
                 <small>Male · Female · Alien / 3 style families</small>
               </div>
             </div>
-            <div className={referenceCount === 3 ? 'pipeline-step done' : 'pipeline-step next'}>
+            <div className={buildStage === 'fit' ? 'pipeline-step active' : referenceCount >= 2 || lastFit ? 'pipeline-step done' : 'pipeline-step next'}>
               <span>02</span>
               <div>
                 <strong>Multi-view fit</strong>
                 <small>Front · side · back → canonical morphs</small>
               </div>
             </div>
-            <div className={generatedMesh ? 'pipeline-step done' : 'pipeline-step next'}>
+            <div className={buildStage === 'ai' ? 'pipeline-step active' : generatedMesh ? 'pipeline-step done' : 'pipeline-step next'}>
               <span>03</span>
               <div>
                 <strong>AI reconstruction</strong>
