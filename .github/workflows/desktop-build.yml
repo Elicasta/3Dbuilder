@@ -1,5 +1,9 @@
 name: Desktop Builds
 
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
