@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { CharacterState } from '../types/character';
 import type { EngineStatus, SystemCapabilities } from '../types/engine';
+import { canonicalJoints } from './canonicalRig';
 
 export interface BlenderStatus {
   found: boolean;
@@ -56,7 +57,10 @@ export async function saveCharacterRecipe(character: CharacterState): Promise<st
     name: character.name,
     recipe: JSON.stringify(
       {
-        schema: '3dbuilder.character.v1',
+        schema: '3dbuilder.character.v2',
+        phase: 2,
+        coordinateSystem: 'Y-up / meters / T-pose',
+        rig: { joints: canonicalJoints(character) },
         exportedAt: new Date().toISOString(),
         character
       },
