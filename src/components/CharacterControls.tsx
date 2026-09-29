@@ -107,6 +107,21 @@ export default function CharacterControls({ character, onChange, onReset }: Char
               <span>{activeGroup.description}</span>
             </div>
             <div className="control-stack">
+              {activeGroup.id === 'macro' && (
+                <>
+                  {([
+                    ['muscle', 'Muscle'],
+                    ['weight', 'Weight'],
+                    ['proportions', 'Proportions']
+                  ] as const).map(([key, label]) => (
+                    <label className="range-control" key={key}>
+                      <span><strong>{label}</strong><output>{character.macro[key].toFixed(2)}</output></span>
+                      <input type="range" min="0" max="1" step="0.01" value={character.macro[key]}
+                        onChange={(event) => onChange({ ...character, macro: { ...character.macro, [key]: Number(event.target.value) } })} />
+                    </label>
+                  ))}
+                </>
+              )}
               {activeGroup.controls.map((morph) => (
                 <label className="range-control" key={morph.key}>
                   <span><strong>{morph.label}</strong><output>{character.morphs[morph.key].toFixed(2)}</output></span>
