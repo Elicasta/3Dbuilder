@@ -147,7 +147,7 @@ export default function App() {
 
       if (referenceCount >= 2) {
         setStatus(`Solving one shared identity from ${referenceCount} views…`);
-        const fit = await solveIdentityFromReferences(references);
+        const fit = await solveIdentityFromReferences(references, makeHumanObj ?? undefined, character);
         setCharacter((current) => applyIdentityFit(current, fit));
         setLastFit(fit.analysis);
         setViewMode('canonical');
