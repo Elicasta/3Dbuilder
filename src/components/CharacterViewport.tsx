@@ -431,9 +431,11 @@ function AICandidate({ url, overlay = false }: { url: string; overlay?: boolean 
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene, overlay]);
 
   useEffect(() => {
-    // TripoSR/glTF arrives Z-up relative to our Three.js Y-up builder. Rotate
-    // the candidate first, then measure it in builder space.
-    scene.rotation.set(-Math.PI / 2, 0, 0);
+    // This TripoSR GLB's body-height axis arrives on Three.js +X: feet are
+    // toward -X and the head toward +X. Rotate +90° around Z so +X becomes
+    // builder +Y. Rotating around X cannot fix this because it leaves X
+    // horizontal, which is why the previous candidate stayed on its side.
+    scene.rotation.set(0, 0, Math.PI / 2);
     scene.position.set(0, 0, 0);
     scene.scale.setScalar(1);
     scene.updateMatrixWorld(true);
