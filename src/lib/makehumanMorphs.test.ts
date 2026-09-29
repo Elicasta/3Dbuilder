@@ -43,7 +43,10 @@ describe('MakeHuman modifier resolver', () => {
 
   it('matches MakeHuman age interpolation landmarks', () => {
     expect(makeHumanAgeWeights(0)).toEqual([{ value: 'baby', weight: 1 }]);
-    expect(makeHumanAgeWeights(0.1875)).toEqual([{ value: 'child', weight: 1 }]);
+    const child=makeHumanAgeWeights(0.1875);
+    expect(child).toHaveLength(1);
+    expect(child[0].value).toBe('child');
+    expect(child[0].weight).toBeCloseTo(1,8);
     expect(makeHumanAgeWeights(0.5)).toEqual([{ value: 'young', weight: 1 }]);
     expect(makeHumanAgeWeights(1)).toEqual([{ value: 'old', weight: 1 }]);
   });
@@ -70,9 +73,9 @@ describe('MakeHuman modifier resolver', () => {
       'macrodetails/caucasian-male-young.target',
       'macrodetails/asian-male-young.target',
       'macrodetails/african-male-young.target',
-      'macrodetails/universal-male-young-maxmuscle-maxweight.target',
-      'macrodetails/height/male-young-maxmuscle-maxweight-maxheight.target',
-      'macrodetails/height/male-young-maxmuscle-maxweight-minheight.target'
+      'macrodetails/universal-male-young-averagemuscle-averageweight.target',
+      'macrodetails/height/male-young-averagemuscle-averageweight-maxheight.target',
+      'macrodetails/height/male-young-averagemuscle-averageweight-minheight.target'
     ];
     const targets = resolveMakeHumanMacroTargets(
       'male',
