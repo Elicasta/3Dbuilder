@@ -248,14 +248,19 @@ export async function analyzeMultiView(
     shoulders: mapRatio(shoulders, 0.225, 0.86, 1.14),
     chest: mapRatio(chest, 0.205, 0.84, 1.16),
     chestDepth: mapRatio(sideChest, 0.13, 0.82, 1.18),
-    waist: mapRatio(waist, 0.15, 0.84, 1.16),
-    waistDepth: mapRatio(sideWaist, 0.115, 0.82, 1.18),
+    // Waist uses MakeHuman's circumference measurement modifier. Blend the
+    // front width with side depth instead of driving a fake waist-depth slider.
+    waist: clamp(
+      (mapRatio(waist, 0.15, 0.84, 1.16) + mapRatio(sideWaist, 0.115, 0.84, 1.16)) / 2,
+      0.84,
+      1.16
+    ),
     hips: mapRatio(hips, 0.18, 0.84, 1.16),
     hipDepth: mapRatio(sideHips, 0.135, 0.82, 1.18),
     headScale: mapRatio(head, 0.125, 0.9, 1.12),
-    // Do not infer cranium depth aggressively from a side T-pose silhouette:
-    // hair, nose and ears contaminate this measurement.
-    craniumScale: sideHead ? clamp(mapRatio(sideHead, 0.13, 0.94, 1.08), 0.94, 1.08) : 1,
+    // Side head depth is intentionally conservative because hair, nose and
+    // ears contaminate the silhouette. faceDepth maps to head-scale-depth.
+    faceDepth: sideHead ? clamp(mapRatio(sideHead, 0.13, 0.94, 1.08), 0.94, 1.08) : 1,
     armLength: mapRatio(armSpan, 1.02, 0.9, 1.12),
     legLength: legSplit
       ? clamp((1 - legSplit) / 0.47, 0.9, 1.12)
@@ -301,7 +306,7 @@ export async function analyzeMultiView(
   if (!front) notes.push('Front view missing.');
   if (!side) notes.push('Side view missing, depth morphs remain approximate.');
   if (!back) notes.push('Back view missing, rear silhouette is not cross-checked.');
-  notes.push('Fit uses normalized silhouette measurements; manual morphs remain editable after fitting.');
+  notes.push('Fit writes only supported MakeHuman macro/measurement modifiers; every fitted value remains editable in Modeling.');
   if (confidence < 0.45) {
     notes.push('Low silhouette extraction confidence. Plain backgrounds and T-poses will fit better.');
   }
