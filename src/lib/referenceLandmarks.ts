@@ -18,7 +18,7 @@ async function getEngines(){
   if(!engines) engines=(async()=>{
     const vision=await FilesetResolver.forVisionTasks(WASM);
     const [pose,face]=await Promise.all([
-      PoseLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:POSE},runningMode:'IMAGE',numPoses:1,outputSegmentationMasks:true}),
+      PoseLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:POSE},runningMode:'IMAGE' as const,numPoses:1,outputSegmentationMasks:true}),
       FaceLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:FACE},runningMode:'IMAGE',numFaces:1,outputFaceBlendshapes:false,outputFacialTransformationMatrixes:true})
     ]);
     return {pose,face};
