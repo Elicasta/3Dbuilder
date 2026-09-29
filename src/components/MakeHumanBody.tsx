@@ -459,7 +459,7 @@ export default function MakeHumanBody({
           }
         }
 
-        const fitted = await Promise.all(
+        const fitted: FittedAsset[] = await Promise.all(
           selected.map(async (path) => {
             const bundle = await getMakeHumanAssetBundle(path);
             const asset = fittedAssetFromTexts(bundle.definitionText, bundle.objText, body);
