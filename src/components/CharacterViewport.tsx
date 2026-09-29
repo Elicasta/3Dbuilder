@@ -224,24 +224,24 @@ function CharacterMesh({ character, pose }: { character: CharacterState; pose: P
         <capsuleGeometry args={[0.25, 0.45, 8, 20]} />
         <Surface color={appearance.skin} roughness={skinRoughness} />
       </mesh>
-      <mesh position={[0, headY, 0]} scale={[0.62 * head * morphs.jawWidth, 0.72 * head * cranium, 0.62 * head * (alien ? cranium * 1.05 : 1)]} castShadow>
+      <mesh position={[0, headY, 0]} scale={[0.62 * head * morphs.faceWidth, 0.72 * head * cranium * morphs.jawHeight, 0.62 * head * morphs.faceDepth * (alien ? cranium * 1.05 : 1)]} castShadow>
         <sphereGeometry args={[0.72, realistic ? 48 : 36, realistic ? 36 : 28]} />
         <Surface color={appearance.skin} roughness={skinRoughness} />
       </mesh>
       {alien && <mesh position={[0, headY + 0.25 * head, -0.03]} scale={[0.7 * head * cranium, 0.46 * head * cranium, 0.65 * head * cranium]} castShadow><sphereGeometry args={[0.72, 36, 28]} /><Surface color={appearance.skinSecondary} roughness={skinRoughness} /></mesh>}
       {appearance.hairEnabled && <mesh position={[0, headY + 0.25 * head, -0.11]} scale={[0.63 * head, 0.31 * head * cranium, 0.62 * head]} castShadow><sphereGeometry args={[0.72, 36, 24]} /><Surface color={appearance.hair} roughness={0.9} /></mesh>}
       {!alien && <>
-        <mesh position={[-0.49 * head * morphs.jawWidth, headY - 0.01 * head, 0]} scale={[0.09 * head, 0.16 * head, 0.055 * head]} castShadow><sphereGeometry args={[0.72, 20, 14]} /><Surface color={appearance.skin} roughness={skinRoughness} /></mesh>
+        <mesh position={[-0.49 * head * morphs.faceWidth, headY - 0.01 * head, 0]} scale={[0.09 * head * morphs.earSize, 0.16 * head * morphs.earSize, 0.055 * head]} castShadow><sphereGeometry args={[0.72, 20, 14]} /><Surface color={appearance.skin} roughness={skinRoughness} /></mesh>
         <mesh position={[0.49 * head * morphs.jawWidth, headY - 0.01 * head, 0]} scale={[0.09 * head, 0.16 * head, 0.055 * head]} castShadow><sphereGeometry args={[0.72, 20, 14]} /><Surface color={appearance.skin} roughness={skinRoughness} /></mesh>
-        <mesh position={[0, headY - 0.06 * head, 0.505 * head]} scale={[0.075 * head, 0.13 * head, 0.11 * head]} castShadow><sphereGeometry args={[0.7, 20, 14]} /><Surface color={appearance.skin} roughness={skinRoughness} /></mesh>
+        <mesh position={[0, headY - 0.06 * head, 0.505 * head]} scale={[0.075 * head * morphs.noseWidth, 0.13 * head * morphs.noseLength, 0.11 * head * morphs.noseProjection]} castShadow><sphereGeometry args={[0.7, 20, 14]} /><Surface color={appearance.skin} roughness={skinRoughness} /></mesh>
       </>}
-      <Eye x={-0.19 * head} y={headY + 0.03 * head} z={0.42 * head * (alien ? cranium : 1)} scale={eyeScale} sclera={appearance.sclera} iris={appearance.eyes} alien={alien} />
-      <Eye x={0.19 * head} y={headY + 0.03 * head} z={0.42 * head * (alien ? cranium : 1)} scale={eyeScale} sclera={appearance.sclera} iris={appearance.eyes} alien={alien} />
+      <Eye x={-0.19 * head * morphs.eyeSpacing} y={headY + 0.03 * head * morphs.eyeHeight} z={0.42 * head * (alien ? cranium : 1)} scale={eyeScale} sclera={appearance.sclera} iris={appearance.eyes} alien={alien} />
+      <Eye x={0.19 * head * morphs.eyeSpacing} y={headY + 0.03 * head * morphs.eyeHeight} z={0.42 * head * (alien ? cranium : 1)} scale={eyeScale} sclera={appearance.sclera} iris={appearance.eyes} alien={alien} />
       {!alien && <>
-        <mesh position={[-0.19 * head, headY + 0.19 * head, 0.49 * head]} rotation={[0, 0, -0.08]} scale={[0.17 * head, 0.025 * head, 0.025]}><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.brows} roughness={0.86} /></mesh>
-        <mesh position={[0.19 * head, headY + 0.19 * head, 0.49 * head]} rotation={[0, 0, 0.08]} scale={[0.17 * head, 0.025 * head, 0.025]}><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.brows} roughness={0.86} /></mesh>
+        <mesh position={[-0.19 * head * morphs.eyeSpacing, headY + 0.19 * head * morphs.browHeight, 0.49 * head]} rotation={[0, 0, -0.08]} scale={[0.17 * head, 0.025 * head, 0.025]}><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.brows} roughness={0.86} /></mesh>
+        <mesh position={[0.19 * head * morphs.eyeSpacing, headY + 0.19 * head * morphs.browHeight, 0.49 * head]} rotation={[0, 0, 0.08]} scale={[0.17 * head, 0.025 * head, 0.025]}><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.brows} roughness={0.86} /></mesh>
       </>}
-      <mesh position={[0, headY - 0.26 * head, 0.455 * head]} scale={[0.22 * morphs.jawWidth, 0.055, 0.035]}><sphereGeometry args={[0.5, 20, 14]} /><Surface color={appearance.lips} roughness={0.58} /></mesh>
+      <mesh position={[0, headY - 0.26 * head, 0.455 * head]} scale={[0.22 * morphs.mouthWidth, 0.055 * morphs.lipFullness, 0.035 * morphs.chinProjection]}><sphereGeometry args={[0.5, 20, 14]} /><Surface color={appearance.lips} roughness={0.58} /></mesh>
       <Hand position={(posed.get('handL') ?? [-armReach, shoulderY, 0]) as [number,number,number]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
       <Hand position={(posed.get('handR') ?? [armReach, shoulderY, 0]) as [number,number,number]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
       <Foot position={(posed.get('toeL') ?? [-hipX, footY, 0.18]) as [number,number,number]} scale={morphs.footSize * build} color={appearance.skin} roughness={skinRoughness} />
