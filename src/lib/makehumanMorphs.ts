@@ -145,6 +145,7 @@ export function resolveMakeHumanMacroTargets(
   const sex = lane === 'female' ? 'female' : 'male';
   const phenotype = macro ?? {
     age: 0.5, muscle: 0.5, weight: 0.5, proportions: 0.5,
+    breastSize: 0.5, breastFirmness: 0.5,
     african: 1 / 3, asian: 1 / 3, caucasian: 1 / 3
   };
   const result = new Map<string, number>();
@@ -161,6 +162,8 @@ export function resolveMakeHumanMacroTargets(
   const heights = triangle(height01, 'minheight', 'averageheight', 'maxheight');
   const ideal = Math.max(0, phenotype.proportions * 2 - 1);
   const uncommon = Math.max(0, 1 - phenotype.proportions * 2);
+  const cups = triangle(phenotype.breastSize, 'mincup', 'averagecup', 'maxcup');
+  const firmness = triangle(phenotype.breastFirmness, 'minfirmness', 'averagefirmness', 'maxfirmness');
   const raceTotal = Math.max(0.0001, phenotype.african + phenotype.asian + phenotype.caucasian);
   const races = [
     ['caucasian', phenotype.caucasian / raceTotal],
@@ -198,6 +201,25 @@ export function resolveMakeHumanMacroTargets(
             `macrodetails/proportions/${sex}-${age.value}-${muscle.value}-${weight.value}-uncommonproportions.target`,
             dependency * uncommon
           );
+        }
+      }
+    }
+  }
+
+
+  if (sex === 'female') {
+    for (const age of ages) {
+      for (const muscle of muscles) {
+        for (const weight of weights) {
+          for (const cup of cups) {
+            for (const firm of firmness) {
+              if (cup.value === 'averagecup' && firm.value === 'averagefirmness') continue;
+              add(
+                `breast/female-${age.value}-${muscle.value}-${weight.value}-${cup.value}-${firm.value}.target`,
+                age.weight * muscle.weight * weight.weight * cup.weight * firm.weight
+              );
+            }
+          }
         }
       }
     }
