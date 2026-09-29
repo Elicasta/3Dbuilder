@@ -102,6 +102,7 @@ export default function App() {
         },
         nativeModifiers: {},
         equippedAssets: [],
+        anatomy: { ...DEFAULT_CHARACTER.anatomy },
         morphs: reset.morphs,
         appearance: reset.appearance
       };
