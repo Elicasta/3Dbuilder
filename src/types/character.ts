@@ -57,13 +57,27 @@ export interface AppearanceState {
   markingsOpacity: number;
 }
 
-export type WardrobeSlot = 'shirt' | 'pants' | 'boots' | 'vest';
+export type WardrobeSlot =
+  | 'shirt'
+  | 'pants'
+  | 'boots'
+  | 'vest'
+  | 'headwear'
+  | 'eyewear'
+  | 'gloves'
+  | 'belt'
+  | 'gear';
 
 export interface WardrobeState {
   shirt: boolean;
   pants: boolean;
   boots: boolean;
   vest: boolean;
+  headwear: boolean;
+  eyewear: boolean;
+  gloves: boolean;
+  belt: boolean;
+  gear: boolean;
 }
 
 export interface CharacterState {
@@ -136,7 +150,12 @@ export const DEFAULT_CHARACTER: CharacterState = {
     shirt: false,
     pants: false,
     boots: false,
-    vest: false
+    vest: false,
+    headwear: false,
+    eyewear: false,
+    gloves: false,
+    belt: false,
+    gear: false
   },
   rigCharacter: true,
   generateTextures: true,
