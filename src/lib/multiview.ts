@@ -269,15 +269,17 @@ async function analyzeFile(file: File, landmarks?: ReferenceLandmarks | null): P
 }
 
 export async function analyzeMultiView(
-  references: CharacterReferences
+  references: CharacterReferences,
+  options: { landmarks?: boolean } = {}
 ): Promise<MultiViewAnalysis> {
-  const landmarkSets = await Promise.all(
+  const useLandmarks=options.landmarks!==false;
+  const landmarkSets = useLandmarks ? await Promise.all(
     (['front','side','back'] as const).map(async (view) => {
       const file=references[view];
       if(!file)return null;
       try{return await detectReferenceLandmarks(file);}catch{return null;}
     })
-  );
+  ) : [null,null,null];
   const [frontLandmarks,sideLandmarks,backLandmarks]=landmarkSets;
   const [front,side,back]=await Promise.all([
     references.front?analyzeFile(references.front,frontLandmarks):Promise.resolve(null),
@@ -410,7 +412,7 @@ export async function analyzeMultiView(
   if (!front) notes.push('Front view missing.');
   if (!side) notes.push('Side view missing, depth morphs remain approximate.');
   if (!back) notes.push('Back view missing, rear silhouette is not cross-checked.');
-  notes.push(landmarkConfidence > 0 ? 'On-device pose/face landmarks refined anatomical proportions.' : 'Landmark model unavailable; using silhouette fallback.');
+  notes.push(!useLandmarks ? 'Fast diagnostics used silhouette measurements only.' : landmarkConfidence > 0 ? 'On-device pose/face landmarks refined anatomical proportions.' : 'Landmark model unavailable; using silhouette fallback.');
   notes.push('Fit writes supported editable character modifiers; every fitted value remains editable in Modeling.');
   if (confidence < 0.45) {
     notes.push('Low silhouette extraction confidence. Plain backgrounds and T-poses will fit better.');
