@@ -43,20 +43,18 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
   const armRanges: Array<{ start:number; end:number; sign:number }> = [];
   const legRanges: Array<{ start:number; end:number; sign:number }> = [];
   const addEllipsoid=(cx:number,cy:number,cz:number,rx:number,ry:number,rz:number,lat=12,lon=seg)=>{
-    const top=vertices.length/3; vertices.push(cx,cy+ry,cz);
+    // Offset the poles by a tiny latitude ring instead of fanning every
+    // longitude into one coincident point. This avoids zero-area pole faces
+    // while preserving a fixed vertex/index count across every head morph.
     const rings:number[]=[];
-    for(let y=1;y<lat;y++){
-      const phi=Math.PI*y/lat, start=vertices.length/3; rings.push(start);
+    for(let y=0;y<=lat;y++){
+      const phi=Math.PI*(y+.35)/(lat+.7), start=vertices.length/3; rings.push(start);
       for(let s=0;s<lon;s++){
         const a=s/lon*Math.PI*2;
         vertices.push(cx+Math.sin(phi)*Math.cos(a)*rx,cy+Math.cos(phi)*ry,cz+Math.sin(phi)*Math.sin(a)*rz);
       }
     }
-    const bottom=vertices.length/3; vertices.push(cx,cy-ry,cz);
-    for(let s=0;s<lon;s++){const n=(s+1)%lon;indices.push(top,rings[0]+s,rings[0]+n);}
     for(let y=0;y<rings.length-1;y++) connectRings(indices,rings[y],rings[y+1],lon);
-    const last=rings[rings.length-1];
-    for(let s=0;s<lon;s++){const n=(s+1)%lon;indices.push(last+s,bottom,last+n);}
   };
 
   // A single indexed surface. Torso, arms and legs are stitched through shared
