@@ -1,10 +1,11 @@
 import { Line } from '@react-three/drei';
 import { useMemo } from 'react';
 import type { CharacterState } from '../types/character';
-import { canonicalJoints } from '../lib/canonicalRig';
+import { posedJoints } from '../lib/posedRig';
+import type { PoseState } from '../lib/pose';
 
-export default function RigOverlay({ character }: { character: CharacterState }) {
-  const joints = useMemo(() => canonicalJoints(character), [character]);
+export default function RigOverlay({ character, pose }: { character: CharacterState; pose: PoseState }) {
+  const joints = useMemo(() => posedJoints(character, pose), [character, pose]);
   const byName = useMemo(() => new Map(joints.map(j => [j.name, j])), [joints]);
 
   return (
