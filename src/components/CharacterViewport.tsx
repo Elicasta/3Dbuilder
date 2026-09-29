@@ -305,8 +305,8 @@ function CharacterMesh({ character }: { character: CharacterState }) {
           { y: 2.24 * height * torsoLength, rx: 0.4 * build * morphs.neckThickness, rz: 0.34 * build * morphs.neckThickness }
         ]}
       />
-      <Joint position={[-shoulderJointX, shoulderY, 0]} scale={[0.78 * build, 0.9 * build, 0.78 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
-      <Joint position={[shoulderJointX, shoulderY, 0]} scale={[0.78 * build, 0.9 * build, 0.78 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
+      <Joint position={[-shoulderJointX, shoulderY, 0]} scale={[0.54 * build, 0.66 * build, 0.62 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
+      <Joint position={[shoulderJointX, shoulderY, 0]} scale={[0.54 * build, 0.66 * build, 0.62 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
       <Joint position={[-hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
       <Joint position={[hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
       <mesh position={[0, neckY, 0]} scale={[0.38 * morphs.neckThickness, 0.48 * morphs.neckLength, 0.36 * morphs.neckThickness]} castShadow>
@@ -335,11 +335,11 @@ function CharacterMesh({ character }: { character: CharacterState }) {
           [-armReach + 0.08, shoulderY, 0]
         ]}
         radii={[
-          [0.27 * armThickness, 0.25 * armThickness],
-          [0.25 * armThickness, 0.23 * armThickness],
-          [0.21 * armThickness, 0.2 * armThickness],
-          [0.18 * armThickness, 0.17 * armThickness],
-          [0.14 * armThickness, 0.135 * armThickness]
+          [0.22 * armThickness, 0.205 * armThickness],
+          [0.215 * armThickness, 0.2 * armThickness],
+          [0.17 * armThickness, 0.165 * armThickness],
+          [0.155 * armThickness, 0.15 * armThickness],
+          [0.12 * armThickness, 0.115 * armThickness]
         ]}
         color={appearance.skin}
         roughness={skinRoughness}
@@ -354,11 +354,11 @@ function CharacterMesh({ character }: { character: CharacterState }) {
           [armReach - 0.08, shoulderY, 0]
         ]}
         radii={[
-          [0.27 * armThickness, 0.25 * armThickness],
-          [0.25 * armThickness, 0.23 * armThickness],
-          [0.21 * armThickness, 0.2 * armThickness],
-          [0.18 * armThickness, 0.17 * armThickness],
-          [0.14 * armThickness, 0.135 * armThickness]
+          [0.22 * armThickness, 0.205 * armThickness],
+          [0.215 * armThickness, 0.2 * armThickness],
+          [0.17 * armThickness, 0.165 * armThickness],
+          [0.155 * armThickness, 0.15 * armThickness],
+          [0.12 * armThickness, 0.115 * armThickness]
         ]}
         color={appearance.skin}
         roughness={skinRoughness}
@@ -373,11 +373,11 @@ function CharacterMesh({ character }: { character: CharacterState }) {
           [-hipX, footY + 0.18, 0.02]
         ]}
         radii={[
-          [0.29 * legThickness, 0.28 * legThickness],
-          [0.27 * legThickness, 0.26 * legThickness],
-          [0.22 * legThickness, 0.215 * legThickness],
-          [0.2 * legThickness, 0.19 * legThickness],
-          [0.145 * legThickness, 0.14 * legThickness]
+          [0.25 * legThickness, 0.245 * legThickness],
+          [0.255 * legThickness, 0.245 * legThickness],
+          [0.175 * legThickness, 0.17 * legThickness],
+          [0.205 * legThickness, 0.19 * legThickness],
+          [0.125 * legThickness, 0.12 * legThickness]
         ]}
         color={appearance.skin}
         roughness={skinRoughness}
@@ -392,11 +392,11 @@ function CharacterMesh({ character }: { character: CharacterState }) {
           [hipX, footY + 0.18, 0.02]
         ]}
         radii={[
-          [0.29 * legThickness, 0.28 * legThickness],
-          [0.27 * legThickness, 0.26 * legThickness],
-          [0.22 * legThickness, 0.215 * legThickness],
-          [0.2 * legThickness, 0.19 * legThickness],
-          [0.145 * legThickness, 0.14 * legThickness]
+          [0.25 * legThickness, 0.245 * legThickness],
+          [0.255 * legThickness, 0.245 * legThickness],
+          [0.175 * legThickness, 0.17 * legThickness],
+          [0.205 * legThickness, 0.19 * legThickness],
+          [0.125 * legThickness, 0.12 * legThickness]
         ]}
         color={appearance.skin}
         roughness={skinRoughness}
