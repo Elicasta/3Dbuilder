@@ -22,6 +22,8 @@ verts 0
 x_scale 0 1 2
 verts 0
 0 1 2 0.5 0.25 0.25 1 0 0
+1
+2
 `);
     const obj=`v 0 0 0
 v 0 0 0
