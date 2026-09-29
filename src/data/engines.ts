@@ -2,6 +2,17 @@ import type { EngineDefinition } from '../types/engine';
 
 export const ENGINES: EngineDefinition[] = [
   {
+    id: 'makehuman',
+    name: 'MakeHuman hm08 Assets',
+    role: 'body-prior',
+    repository: 'https://github.com/makehumancommunity/makehuman.git',
+    researchOnly: false,
+    summary: 'Production human base topology and sparse morph-target library.',
+    bestFor: 'Stable canonical human mesh, body/face morph data, fitting helpers.',
+    runtime: 'Native asset data',
+    priority: 'core'
+  },
+  {
     id: 'mpfb',
     name: 'MPFB / MakeHuman',
     role: 'body-prior',
