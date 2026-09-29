@@ -578,6 +578,40 @@ fn run_reconstruction(
 }
 
 #[tauri::command]
+fn latest_generated_mesh(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let jobs = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| format!("Could not resolve local app data: {error}"))?
+        .join("jobs");
+
+    if !jobs.exists() {
+        return Ok(None);
+    }
+
+    let mut candidates: Vec<(SystemTime, PathBuf)> = Vec::new();
+    for entry in fs::read_dir(&jobs).map_err(|error| format!("Could not scan jobs: {error}"))? {
+        let entry = entry.map_err(|error| format!("Could not read job entry: {error}"))?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        if !name.starts_with("triposr-") || !entry.path().is_dir() {
+            continue;
+        }
+        let mesh = entry.path().join("0").join("mesh.glb");
+        if mesh.exists() {
+            let modified = fs::metadata(&mesh)
+                .and_then(|metadata| metadata.modified())
+                .unwrap_or(UNIX_EPOCH);
+            candidates.push((modified, mesh));
+        }
+    }
+
+    candidates.sort_by_key(|(modified, _)| *modified);
+    Ok(candidates
+        .pop()
+        .map(|(_, path)| path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
 fn open_in_blender(app: tauri::AppHandle, mesh_path: String) -> Result<(), String> {
     let blender = blender_path().ok_or_else(|| "Blender was not found.".to_string())?;
     let app_data = app
@@ -671,6 +705,7 @@ pub fn run() {
             prepare_engine_runtime,
             stage_reference,
             run_reconstruction,
+            latest_generated_mesh,
             open_in_blender,
             save_recipe
         ])
