@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type { CharacterState } from '../types/character';
 import type { EngineStatus, SystemCapabilities } from '../types/engine';
 import { canonicalJoints } from './canonicalRig';
+import { canonicalObj, phase2ExportRecipe } from './canonicalExport';
 
 export interface BlenderStatus {
   found: boolean;
@@ -67,5 +68,13 @@ export async function saveCharacterRecipe(character: CharacterState): Promise<st
       null,
       2
     )
+  });
+}
+
+export async function openCanonicalInBlender(character: CharacterState): Promise<void> {
+  return invoke<void>('open_character_in_blender', {
+    name: character.name,
+    objText: canonicalObj(character),
+    recipe: JSON.stringify(phase2ExportRecipe(character))
   });
 }
