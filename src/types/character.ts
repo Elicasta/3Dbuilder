@@ -2,6 +2,8 @@ export type ReferenceSlot = 'front' | 'side' | 'back';
 export type CharacterLane = 'male' | 'female' | 'alien';
 export type CharacterStyle = 'stylized' | 'semiReal' | 'realHuman';
 export type RenderTarget = 'general' | 'unreal' | 'print';
+export type HairStyle = 'buzz' | 'short' | 'sidePart' | 'bob' | 'long';
+export type AnatomyMode = 'off' | 'simplified' | 'detailed';
 
 export interface CharacterReferences {
   front: File | null;
@@ -66,6 +68,9 @@ export interface AppearanceState {
   boots: string;
   vest: string;
   hairEnabled: boolean;
+  hairStyle: HairStyle;
+  hairLength: number;
+  hairVolume: number;
   skinRoughness: number;
   skinSubsurface: number;
   freckles: number;
@@ -107,6 +112,17 @@ export interface MakeHumanMacroState {
   caucasian: number;
 }
 
+export interface AnatomyState {
+  mode: AnatomyMode;
+  penisLength: number;
+  penisGirth: number;
+  testicleSize: number;
+  vulvaWidth: number;
+  labiaMajora: number;
+  labiaMinora: number;
+  clitoralSize: number;
+}
+
 export interface CharacterState {
   name: string;
   lane: CharacterLane;
@@ -118,6 +134,7 @@ export interface CharacterState {
   morphs: BodyMorphs;
   appearance: AppearanceState;
   wardrobe: WardrobeState;
+  anatomy: AnatomyState;
   rigCharacter: boolean;
   generateTextures: boolean;
   blenderCleanup: boolean;
@@ -199,6 +216,9 @@ export const DEFAULT_CHARACTER: CharacterState = {
     boots: '#7a5b3e',
     vest: '#655947',
     hairEnabled: true,
+    hairStyle: 'short',
+    hairLength: 0.35,
+    hairVolume: 0.45,
     skinRoughness: 0.62,
     skinSubsurface: 0.18,
     freckles: 0,
@@ -214,6 +234,16 @@ export const DEFAULT_CHARACTER: CharacterState = {
     gloves: false,
     belt: false,
     gear: false
+  },
+  anatomy: {
+    mode: 'off',
+    penisLength: 0.5,
+    penisGirth: 0.5,
+    testicleSize: 0.5,
+    vulvaWidth: 0.5,
+    labiaMajora: 0.5,
+    labiaMinora: 0.5,
+    clitoralSize: 0.5
   },
   rigCharacter: true,
   generateTextures: true,
