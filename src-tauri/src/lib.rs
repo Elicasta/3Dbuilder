@@ -383,6 +383,13 @@ fn prepare_engine_runtime(app: tauri::AppHandle, id: String) -> Result<String, S
         runtime_requirements.push("xatlas==0.0.11".to_string());
     }
 
+    // rembg intentionally keeps ONNX Runtime as an install extra in newer
+    // releases. TripoSR imports rembg during CLI startup, so the managed
+    // runtime must include the CPU ONNX backend explicitly.
+    if !runtime_requirements.iter().any(|line| line.starts_with("onnxruntime")) {
+        runtime_requirements.push("onnxruntime".to_string());
+    }
+
     let runtime_requirements_path = root.join("triposr-runtime-requirements.txt");
     fs::write(
         &runtime_requirements_path,
