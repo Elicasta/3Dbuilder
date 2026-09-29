@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CHARACTER } from '../types/character';
 import { buildCanonicalGeometry } from '../components/CanonicalBody';
-import { productionSkinWeights, validateSkinWeights } from './productionSkin';
+import { deformationReport, productionSkinWeights, validateSkinWeights } from './productionSkin';
+import { POSES } from './pose';
 
 describe('phase 3 production character contract',()=>{
   it('keeps topology vertex/index counts stable across body morphs',()=>{
@@ -34,6 +35,30 @@ describe('phase 3 production character contract',()=>{
     expect(right).toBeGreaterThanOrEqual(0);
     expect(weights[left].influences.some(x=>x.joint.endsWith('L'))).toBe(true);
     expect(weights[right].influences.some(x=>x.joint.endsWith('R'))).toBe(true);
+    geometry.dispose();
+  });
+
+  it('keeps all six regression poses finite and free of collapsed triangles',()=>{
+    const base=buildCanonicalGeometry(DEFAULT_CHARACTER,POSES.tPose);
+    for(const [name,pose] of Object.entries(POSES)){
+      const posed=buildCanonicalGeometry(DEFAULT_CHARACTER,pose);
+      const report=deformationReport(base,posed,name);
+      expect(report.finite,name).toBe(true);
+      expect(report.collapsedTriangles,name).toBe(0);
+      posed.dispose();
+    }
+    base.dispose();
+  });
+
+  it('blends shoulder and hip junctions instead of assigning a hard single-bone seam',()=>{
+    const geometry=buildCanonicalGeometry(DEFAULT_CHARACTER);
+    const p=geometry.getAttribute('position');
+    const weights=productionSkinWeights(DEFAULT_CHARACTER);
+    const blended=weights.filter((w,i)=>{
+      const y=p.getY(i),x=Math.abs(p.getX(i));
+      return w.influences.length>1 && ((y>1.65&&x>.3)||(y<1.0&&x>.12));
+    });
+    expect(blended.length).toBeGreaterThan(0);
     geometry.dispose();
   });
 });
