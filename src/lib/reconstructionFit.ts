@@ -48,7 +48,7 @@ export async function solveIdentityFromReferences(references:CharacterReferences
   let modelLoss=.35;
   if(baseObjText&&seedCharacter){
     const seed={...seedCharacter,macro:{...seedCharacter.macro,...macroPatch},morphs:{...seedCharacter.morphs,...morphPatch}};
-    let timer:number|undefined;
+    let timer:ReturnType<typeof globalThis.setTimeout>|undefined;
     try{
       const optimized=await Promise.race([
         optimizeProfileFit(baseObjText,seed,{front:analysis.front,side:analysis.side}),
