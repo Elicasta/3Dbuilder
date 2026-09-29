@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BufferGeometry, Float32BufferAttribute } from 'three';
+import { BufferGeometry, Float32BufferAttribute, Vector3 } from 'three';
 import { makeHumanBones, makeHumanSkinWeights } from './makehumanRig';
 import { applyMakeHumanPose, MAKEHUMAN_POSES, skinMakeHumanGeometry } from './makehumanSkinning';
 
@@ -10,6 +10,9 @@ describe('MakeHuman production skinning',()=>{
     const weights=makeHumanSkinWeights(JSON.stringify({weights:{root:[[0,1],[1,1],[2,1]]}}),3);
     const r=skinMakeHumanGeometry(g,defs,weights);
     expect(r.mesh.isSkinnedMesh).toBe(true);expect(g.getAttribute('skinIndex').count).toBe(3);expect(g.getAttribute('skinWeight').getX(2)).toBeCloseTo(1);
+    r.mesh.updateMatrixWorld(true);
+    const bind=new Vector3();r.mesh.applyBoneTransform(2,bind.fromBufferAttribute(g.getAttribute('position'),2));
+    expect(bind.x).toBeCloseTo(.2);expect(bind.y).toBeCloseTo(1);expect(bind.z).toBeCloseTo(0);
     r.geometry?.dispose?.();
   });
   it('pose battery never writes non-finite bone transforms',()=>{
