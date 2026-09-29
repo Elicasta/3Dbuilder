@@ -43,6 +43,39 @@ function Limb({
   );
 }
 
+function Joint({ position, scale, color, roughness }: { position: [number, number, number]; scale: [number, number, number]; color: string; roughness?: number }) {
+  return (
+    <mesh position={position} scale={scale} castShadow>
+      <sphereGeometry args={[0.3, 28, 20]} />
+      <Surface color={color} roughness={roughness} />
+    </mesh>
+  );
+}
+
+function Hand({ position, scale, color, roughness }: { position: [number, number, number]; scale: number; color: string; roughness?: number }) {
+  return (
+    <group position={position} scale={scale}>
+      <mesh scale={[0.38, 0.22, 0.16]} castShadow>
+        <sphereGeometry args={[0.55, 24, 18]} />
+        <Surface color={color} roughness={roughness} />
+      </mesh>
+      <mesh position={[0.23, -0.04, 0.03]} rotation={[0, 0, -0.35]} scale={[0.2, 0.08, 0.08]} castShadow>
+        <capsuleGeometry args={[0.2, 0.55, 8, 16]} />
+        <Surface color={color} roughness={roughness} />
+      </mesh>
+    </group>
+  );
+}
+
+function Foot({ position, scale, color, roughness }: { position: [number, number, number]; scale: number; color: string; roughness?: number }) {
+  return (
+    <mesh position={position} scale={[0.34 * scale, 0.2 * scale, 0.62 * scale]} castShadow>
+      <sphereGeometry args={[0.72, 28, 18]} />
+      <Surface color={color} roughness={roughness} />
+    </mesh>
+  );
+}
+
 function Eye({
   x,
   y,
@@ -105,6 +138,10 @@ function CharacterMesh({ character }: { character: CharacterState }) {
   const armThickness = 0.82 * morphs.armThickness * build;
   const legThickness = 0.92 * morphs.legThickness * build;
   const hipX = 0.44 * hips * build;
+  const armReach = armX + 0.92 * morphs.armLength;
+  const footY = -1.63 * height * legLength;
+  const shoulderJointX = 0.82 * shoulder * build;
+  const hipJointY = 0.58 * height;
 
   return (
     <group position={[0, -0.2, 0]}>
@@ -112,10 +149,14 @@ function CharacterMesh({ character }: { character: CharacterState }) {
         <capsuleGeometry args={[0.58, 1.18, 12, realistic ? 36 : 28]} />
         <Surface color={appearance.skin} roughness={skinRoughness} />
       </mesh>
+      <Joint position={[-shoulderJointX, shoulderY, 0]} scale={[0.78 * build, 0.9 * build, 0.78 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
+      <Joint position={[shoulderJointX, shoulderY, 0]} scale={[0.78 * build, 0.9 * build, 0.78 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
       <mesh position={[0, 0.72 * height, 0]} scale={[0.78 * build * hips, 0.38 * height, 0.5 * build * hipDepth]} castShadow>
         <capsuleGeometry args={[0.5, 0.5, 10, 24]} />
         <Surface color={appearance.skinSecondary} roughness={skinRoughness} />
       </mesh>
+      <Joint position={[-hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
+      <Joint position={[hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
       <mesh position={[0, neckY, 0]} scale={[0.38 * morphs.neckThickness, 0.48 * morphs.neckLength, 0.36 * morphs.neckThickness]} castShadow>
         <capsuleGeometry args={[0.25, 0.45, 8, 20]} />
         <Surface color={appearance.skin} roughness={skinRoughness} />
@@ -128,11 +169,19 @@ function CharacterMesh({ character }: { character: CharacterState }) {
       {appearance.hairEnabled && <mesh position={[0, headY + 0.25 * head, -0.11]} scale={[0.63 * head, 0.31 * head * cranium, 0.62 * head]} castShadow><sphereGeometry args={[0.72, 36, 24]} /><Surface color={appearance.hair} roughness={0.9} /></mesh>}
       <Eye x={-0.19 * head} y={headY + 0.03 * head} z={0.42 * head * (alien ? cranium : 1)} scale={eyeScale} sclera={appearance.sclera} iris={appearance.eyes} alien={alien} />
       <Eye x={0.19 * head} y={headY + 0.03 * head} z={0.42 * head * (alien ? cranium : 1)} scale={eyeScale} sclera={appearance.sclera} iris={appearance.eyes} alien={alien} />
+      {!alien && <>
+        <mesh position={[-0.19 * head, headY + 0.19 * head, 0.49 * head]} rotation={[0, 0, -0.08]} scale={[0.17 * head, 0.025 * head, 0.025]}><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.brows} roughness={0.86} /></mesh>
+        <mesh position={[0.19 * head, headY + 0.19 * head, 0.49 * head]} rotation={[0, 0, 0.08]} scale={[0.17 * head, 0.025 * head, 0.025]}><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.brows} roughness={0.86} /></mesh>
+      </>}
       <mesh position={[0, headY - 0.26 * head, 0.455 * head]} scale={[0.22 * morphs.jawWidth, 0.055, 0.035]}><sphereGeometry args={[0.5, 20, 14]} /><Surface color={appearance.lips} roughness={0.58} /></mesh>
       <Limb position={[-armX, shoulderY, 0]} scale={[armThickness, armScaleX, armThickness]} rotation={[0, 0, Math.PI / 2]} color={appearance.skin} roughness={skinRoughness} />
       <Limb position={[armX, shoulderY, 0]} scale={[armThickness, armScaleX, armThickness]} rotation={[0, 0, Math.PI / 2]} color={appearance.skin} roughness={skinRoughness} />
       <Limb position={[-hipX, legBaseY, 0]} scale={[legThickness, 1.2 * height * legLength, legThickness]} color={appearance.skin} roughness={skinRoughness} />
       <Limb position={[hipX, legBaseY, 0]} scale={[legThickness, 1.2 * height * legLength, legThickness]} color={appearance.skin} roughness={skinRoughness} />
+      <Hand position={[-armReach, shoulderY, 0]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
+      <Hand position={[armReach, shoulderY, 0]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
+      <Foot position={[-hipX, footY, 0.18]} scale={morphs.footSize * build} color={appearance.skin} roughness={skinRoughness} />
+      <Foot position={[hipX, footY, 0.18]} scale={morphs.footSize * build} color={appearance.skin} roughness={skinRoughness} />
       <mesh position={[0, 0.75 * height, 0]} scale={[0.8 * build * waist, 0.34, 0.53 * build * waistDepth]} castShadow><boxGeometry args={[1.35, 0.72, 0.9]} /><Surface color={appearance.underwear} roughness={0.88} /></mesh>
       {female && morphs.bust > 0.72 && <><mesh position={[-0.27 * chest, torsoY + 0.18, 0.41 * chestDepth]} scale={[0.28 * morphs.bust, 0.3 * morphs.bust, 0.2 * morphs.bustProjection]} castShadow><sphereGeometry args={[0.55, 28, 20]} /><Surface color={wardrobe.shirt ? appearance.shirt : appearance.skin} roughness={skinRoughness} /></mesh><mesh position={[0.27 * chest, torsoY + 0.18, 0.41 * chestDepth]} scale={[0.28 * morphs.bust, 0.3 * morphs.bust, 0.2 * morphs.bustProjection]} castShadow><sphereGeometry args={[0.55, 28, 20]} /><Surface color={wardrobe.shirt ? appearance.shirt : appearance.skin} roughness={skinRoughness} /></mesh></>}
       {wardrobe.shirt && <mesh position={[0, torsoY, 0]} scale={[0.9 * build * chest * shoulder, 0.89 * height * torsoLength, 0.51 * build * chestDepth]} castShadow><capsuleGeometry args={[0.6, 1.18, 10, 30]} /><Surface color={appearance.shirt} roughness={0.82} /></mesh>}
@@ -150,62 +199,6 @@ function CharacterMesh({ character }: { character: CharacterState }) {
 }
 
 type ViewMode = 'canonical' | 'ai' | 'overlay';
-
-function AICandidate({ url, overlay = false }: { url: string; overlay?: boolean }) {
-  const gltf = useGLTF(url);
-  const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene, overlay]);
-
-  useEffect(() => {
-    scene.rotation.set(0, 0, Math.PI / 2);
-    scene.position.set(0, 0, 0);
-    scene.scale.setScalar(1);
-    scene.updateMatrixWorld(true);
-
-    const orientedBounds = new Box3().setFromObject(scene);
-    const orientedSize = orientedBounds.getSize(new Vector3());
-    const targetHeight = 5.15;
-    const scale = orientedSize.y > 0 ? targetHeight / orientedSize.y : 1;
-    scene.scale.setScalar(scale);
-    scene.updateMatrixWorld(true);
-
-    const scaledBounds = new Box3().setFromObject(scene);
-    const scaledCenter = scaledBounds.getCenter(new Vector3());
-    scene.position.x -= scaledCenter.x;
-    scene.position.z -= scaledCenter.z;
-    scene.position.y += -2.03 - scaledBounds.min.y;
-    scene.updateMatrixWorld(true);
-
-    scene.traverse((object) => {
-      const mesh = object as unknown as { isMesh?: boolean; castShadow?: boolean; receiveShadow?: boolean; material?: any };
-      if (!mesh.isMesh) return;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      const materials = sourceMaterials.map((source: any) => {
-        const material = source?.clone ? source.clone() : source;
-        if (overlay && material) {
-          material.transparent = true;
-          material.opacity = 0.42;
-          material.depthWrite = false;
-        }
-        return material;
-      });
-      mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
-    });
-  }, [scene, overlay]);
-
-  return <primitive object={scene as Group} />;
-}
-
-function CanonicalBounds({ character, onBounds }: { character: CharacterState; onBounds: (bounds: Box3) => void }) {
-  const group = useMemo(() => new Group(), []);
-  useEffect(() => {
-    group.updateMatrixWorld(true);
-    const bounds = new Box3().setFromObject(group);
-    if (!bounds.isEmpty()) onBounds(bounds);
-  }, [group, character, onBounds]);
-  return <group ref={(node) => { if (node) { group.copy(node, false); } }}><CharacterMesh character={character} /></group>;
-}
 
 function AlignedAICandidate({ url, character, overlay = false }: { url: string; character: CharacterState; overlay?: boolean }) {
   const gltf = useGLTF(url);
