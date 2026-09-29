@@ -111,15 +111,25 @@ export default function App() {
           : 'Running AI geometry candidate from the front reference…'
       );
 
-      const inputPath = await stageReference(front);
-      const meshPath = await runReconstruction('triposr', inputPath);
+      try {
+        const inputPath = await stageReference(front);
+        const meshPath = await runReconstruction('triposr', inputPath);
 
-      setGeneratedMesh(meshPath);
-      setStatus(
-        referenceCount === 3
-          ? 'Multi-view body fit + AI mesh candidate complete. Blender can inspect the raw candidate while the builder keeps the editable canonical character.'
-          : 'AI mesh generated. Add all three views for the strongest canonical fit.'
-      );
+        setGeneratedMesh(meshPath);
+        setStatus(
+          referenceCount === 3
+            ? 'Multi-view body fit + AI mesh candidate complete. Blender can inspect the raw candidate while the builder keeps the editable canonical character.'
+            : 'AI mesh generated. Add all three views for the strongest canonical fit.'
+        );
+      } catch (reconstructionError) {
+        if (referenceCount >= 2) {
+          setStatus(
+            `Canonical ${referenceCount}-view fit complete. AI geometry candidate skipped: ${String(reconstructionError)}`
+          );
+        } else {
+          throw reconstructionError;
+        }
+      }
     } catch (error) {
       setStatus(`Build failed: ${String(error)}`);
     } finally {
