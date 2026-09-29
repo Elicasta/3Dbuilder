@@ -31,11 +31,33 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
   const armT = 0.82*m.armThickness*build;
   const legT = 0.92*m.legThickness*build;
   const seg = character.style === 'realHuman' ? 40 : 32;
+  const neckBaseY = 2.28*h*m.torsoLength;
+  const neckTopY = 2.47*h*m.torsoLength + (m.neckLength-1)*.18;
+  const headY = 2.72*h*m.torsoLength + (m.neckLength-1)*.18;
+  const headRx = .44*m.headScale*m.faceWidth*(character.lane==='alien'?m.craniumScale*1.08:1);
+  const headRy = .56*m.headScale*m.craniumScale;
+  const headRz = .43*m.headScale*m.faceDepth*(character.lane==='alien'?m.craniumScale:1);
 
   const vertices: number[] = [];
   const indices: number[] = [];
   const armRanges: Array<{ start:number; end:number; sign:number }> = [];
   const legRanges: Array<{ start:number; end:number; sign:number }> = [];
+  const addEllipsoid=(cx:number,cy:number,cz:number,rx:number,ry:number,rz:number,lat=12,lon=seg)=>{
+    const top=vertices.length/3; vertices.push(cx,cy+ry,cz);
+    const rings:number[]=[];
+    for(let y=1;y<lat;y++){
+      const phi=Math.PI*y/lat, start=vertices.length/3; rings.push(start);
+      for(let s=0;s<lon;s++){
+        const a=s/lon*Math.PI*2;
+        vertices.push(cx+Math.sin(phi)*Math.cos(a)*rx,cy+Math.cos(phi)*ry,cz+Math.sin(phi)*Math.sin(a)*rz);
+      }
+    }
+    const bottom=vertices.length/3; vertices.push(cx,cy-ry,cz);
+    for(let s=0;s<lon;s++){const n=(s+1)%lon;indices.push(top,rings[0]+s,rings[0]+n);}
+    for(let y=0;y<rings.length-1;y++) connectRings(indices,rings[y],rings[y+1],lon);
+    const last=rings[rings.length-1];
+    for(let s=0;s<lon;s++){const n=(s+1)%lon;indices.push(last+s,bottom,last+n);}
+  };
 
   // A single indexed surface. Torso, arms and legs are stitched through shared
   // junction loops instead of overlapping meshes, so shoulders and hips shade
@@ -69,6 +91,23 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
     }
   });
   for(let r=0;r<torsoStarts.length-1;r++) connectRings(indices,torsoStarts[r],torsoStarts[r+1],seg);
+
+  // Phase 3.4: neck and head now belong to the exported canonical body instead
+  // of existing only as viewport decoration. The neck uses predictable rings
+  // and the head is a fixed-index ellipsoid so morphs never change topology.
+  const neckStarts:number[]=[];
+  [
+    {y:neckBaseY,rx:.29*m.neckThickness,rz:.25*m.neckThickness},
+    {y:(neckBaseY+neckTopY)*.5,rx:.275*m.neckThickness,rz:.245*m.neckThickness},
+    {y:neckTopY,rx:.30*m.neckThickness,rz:.27*m.neckThickness}
+  ].forEach(r=>{
+    neckStarts.push(vertices.length/3);
+    for(let s=0;s<seg;s++){const a=s/seg*Math.PI*2;vertices.push(Math.cos(a)*r.rx,r.y,Math.sin(a)*r.rz);}
+  });
+  connectRings(indices,torsoStarts[torsoStarts.length-1],neckStarts[0],seg);
+  connectRings(indices,neckStarts[0],neckStarts[1],seg);
+  connectRings(indices,neckStarts[1],neckStarts[2],seg);
+  addEllipsoid(0,headY,0,headRx,headRy,headRz,character.style==='realHuman'?16:12,seg);
 
   const addArm = (sign:number) => {
     const limbStart = vertices.length / 3;
