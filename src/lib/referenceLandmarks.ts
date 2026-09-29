@@ -52,7 +52,7 @@ function confidence(points:LandmarkPoint[]){
   return visible.length?visible.reduce((a,b)=>a+b,0)/visible.length:(points.length?1:0);
 }
 
-export async function detectReferenceLandmarks(file:File):Promise<ReferenceLandmarks>{
+async function detectReferenceLandmarksInternal(file:File):Promise<ReferenceLandmarks>{
   const {pose,face}=await getEngines();
   const image=await imageElement(file);
   const poseResult=pose.detect(image);
@@ -67,6 +67,20 @@ export async function detectReferenceLandmarks(file:File):Promise<ReferenceLandm
     segmentationMask={width:mask.width,height:mask.height,values:new Float32Array(values)};
   }
   return {pose:posePoints,poseWorld,face:facePoints,poseConfidence:confidence(posePoints),faceConfidence:facePoints.length?1:0,segmentationMask};
+}
+
+export async function detectReferenceLandmarks(file:File,timeoutMs=6500):Promise<ReferenceLandmarks>{
+  let timer:number|undefined;
+  try{
+    return await Promise.race([
+      detectReferenceLandmarksInternal(file),
+      new Promise<never>((_,reject)=>{
+        timer=window.setTimeout(()=>reject(new Error(`Landmark analysis timed out after ${timeoutMs}ms`)),timeoutMs);
+      })
+    ]);
+  }finally{
+    if(timer!==undefined)window.clearTimeout(timer);
+  }
 }
 
 export function bodyRatiosFromPose(points:LandmarkPoint[]){
