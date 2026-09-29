@@ -198,7 +198,9 @@ function CharacterMesh({ character }: { character: CharacterState }) {
   const female = lane === 'female';
   const realistic = style === 'realHuman';
 
-  const legBaseY = -0.08 * height;
+  const hipJointY = 0.58 * height;
+  const upperLegLength = 1.15 * height * legLength;
+  const legBaseY = hipJointY - upperLegLength * 0.58;
   const torsoY = 1.52 * height * torsoLength;
   const shoulderY = 2.05 * height * torsoLength;
   const neckY = 2.42 * height * torsoLength;
@@ -209,9 +211,8 @@ function CharacterMesh({ character }: { character: CharacterState }) {
   const legThickness = 0.92 * morphs.legThickness * build;
   const hipX = 0.44 * hips * build;
   const armReach = armX + 0.92 * morphs.armLength;
-  const footY = -1.63 * height * legLength;
+  const footY = legBaseY - upperLegLength * 0.58 - 0.16 * height;
   const shoulderJointX = 0.82 * shoulder * build;
-  const hipJointY = 0.58 * height;
 
   return (
     <group position={[0, -0.2, 0]}>
@@ -253,8 +254,8 @@ function CharacterMesh({ character }: { character: CharacterState }) {
       <mesh position={[0, headY - 0.26 * head, 0.455 * head]} scale={[0.22 * morphs.jawWidth, 0.055, 0.035]}><sphereGeometry args={[0.5, 20, 14]} /><Surface color={appearance.lips} roughness={0.58} /></mesh>
       <Limb position={[-armX, shoulderY, 0]} scale={[armThickness, armScaleX, armThickness]} rotation={[0, 0, Math.PI / 2]} color={appearance.skin} roughness={skinRoughness} />
       <Limb position={[armX, shoulderY, 0]} scale={[armThickness, armScaleX, armThickness]} rotation={[0, 0, Math.PI / 2]} color={appearance.skin} roughness={skinRoughness} />
-      <Limb position={[-hipX, legBaseY, 0]} scale={[legThickness, 1.2 * height * legLength, legThickness]} color={appearance.skin} roughness={skinRoughness} />
-      <Limb position={[hipX, legBaseY, 0]} scale={[legThickness, 1.2 * height * legLength, legThickness]} color={appearance.skin} roughness={skinRoughness} />
+      <Limb position={[-hipX, legBaseY, 0]} scale={[legThickness, upperLegLength, legThickness]} color={appearance.skin} roughness={skinRoughness} />
+      <Limb position={[hipX, legBaseY, 0]} scale={[legThickness, upperLegLength, legThickness]} color={appearance.skin} roughness={skinRoughness} />
       <Hand position={[-armReach, shoulderY, 0]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
       <Hand position={[armReach, shoulderY, 0]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
       <Foot position={[-hipX, footY, 0.18]} scale={morphs.footSize * build} color={appearance.skin} roughness={skinRoughness} />
@@ -262,8 +263,8 @@ function CharacterMesh({ character }: { character: CharacterState }) {
       <mesh position={[0, 0.75 * height, 0]} scale={[0.8 * build * waist, 0.34, 0.53 * build * waistDepth]} castShadow><boxGeometry args={[1.35, 0.72, 0.9]} /><Surface color={appearance.underwear} roughness={0.88} /></mesh>
       {female && morphs.bust > 0.72 && <><mesh position={[-0.27 * chest, torsoY + 0.18, 0.41 * chestDepth]} scale={[0.28 * morphs.bust, 0.3 * morphs.bust, 0.2 * morphs.bustProjection]} castShadow><sphereGeometry args={[0.55, 28, 20]} /><Surface color={wardrobe.shirt ? appearance.shirt : appearance.skin} roughness={skinRoughness} /></mesh><mesh position={[0.27 * chest, torsoY + 0.18, 0.41 * chestDepth]} scale={[0.28 * morphs.bust, 0.3 * morphs.bust, 0.2 * morphs.bustProjection]} castShadow><sphereGeometry args={[0.55, 28, 20]} /><Surface color={wardrobe.shirt ? appearance.shirt : appearance.skin} roughness={skinRoughness} /></mesh></>}
       {wardrobe.shirt && <mesh position={[0, torsoY, 0]} scale={[0.9 * build * chest * shoulder, 0.89 * height * torsoLength, 0.51 * build * chestDepth]} castShadow><capsuleGeometry args={[0.6, 1.18, 10, 30]} /><Surface color={appearance.shirt} roughness={0.82} /></mesh>}
-      {wardrobe.pants && <><Limb position={[-hipX, legBaseY + 0.02, 0]} scale={[legThickness * 1.08, 1.22 * height * legLength, legThickness * 1.08]} color={appearance.pants} /><Limb position={[hipX, legBaseY + 0.02, 0]} scale={[legThickness * 1.08, 1.22 * height * legLength, legThickness * 1.08]} color={appearance.pants} /></>}
-      {wardrobe.boots && <><mesh position={[-hipX, -1.5 * height * legLength, 0.16]} scale={[0.48 * morphs.footSize * build, 0.55 * height, 0.78 * morphs.footSize]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.78} /></mesh><mesh position={[hipX, -1.5 * height * legLength, 0.16]} scale={[0.48 * morphs.footSize * build, 0.55 * height, 0.78 * morphs.footSize]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.78} /></mesh></>}
+      {wardrobe.pants && <><Limb position={[-hipX, legBaseY + 0.02, 0]} scale={[legThickness * 1.08, upperLegLength * 1.02, legThickness * 1.08]} color={appearance.pants} /><Limb position={[hipX, legBaseY + 0.02, 0]} scale={[legThickness * 1.08, upperLegLength * 1.02, legThickness * 1.08]} color={appearance.pants} /></>}
+      {wardrobe.boots && <><mesh position={[-hipX, footY + 0.16 * height, 0.16]} scale={[0.48 * morphs.footSize * build, 0.55 * height, 0.78 * morphs.footSize]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.78} /></mesh><mesh position={[hipX, footY + 0.16 * height, 0.16]} scale={[0.48 * morphs.footSize * build, 0.55 * height, 0.78 * morphs.footSize]} castShadow><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.boots} roughness={0.78} /></mesh></>}
       {wardrobe.vest && <mesh position={[0, torsoY + 0.08, 0.08]} scale={[1.02 * build * chest * shoulder, 0.72 * height, 0.59 * build * chestDepth]} castShadow><boxGeometry args={[1.3, 1.45, 0.95]} /><Surface color={appearance.vest} roughness={0.92} /></mesh>}
       {wardrobe.headwear && <mesh position={[0, headY + 0.36 * head, 0]} scale={[0.72 * head * cranium, 0.26 * head, 0.72 * head * cranium]} castShadow><sphereGeometry args={[0.78, 32, 20]} /><Surface color={appearance.vest} roughness={0.8} /></mesh>}
       {wardrobe.eyewear && <mesh position={[0, headY + 0.02 * head, 0.49 * head * (alien ? cranium : 1)]} scale={[0.48 * head * eyeScale, 0.11 * head, 0.04]} castShadow><boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color="#141922" roughness={0.2} metalness={0.08} transparent opacity={0.82} /></mesh>}
