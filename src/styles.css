@@ -404,3 +404,17 @@
 .workspace-nav button.active strong{color:#f0f4fa}
 .workflow-note .panel-header{border-bottom:0}
 @media(max-width:700px){.workspace-nav{padding:0;overflow-x:auto}.workspace-nav button{min-width:132px}}
+
+
+/* Native MakeHuman definition browser */
+.mh-macro-panel{border-bottom:1px solid #252b35}
+.mh-native-browser{border-top:1px solid #252b35;background:#10151b}
+.mh-native-categories{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid #252b35;background:#0d1117}
+.mh-native-categories button{flex:0 0 auto;padding:10px 13px;border:0;border-right:1px solid #252b35;background:transparent;color:#788597;font-size:.68rem;font-weight:800;cursor:pointer}
+.mh-native-categories button.active{background:#1b222d;color:#eef3fa;box-shadow:inset 0 -2px 0 #8194b1}
+.mh-native-workarea{display:grid;grid-template-columns:118px minmax(0,1fr);min-height:300px}
+.mh-native-sections{display:flex;flex-direction:column;border-right:1px solid #252b35;background:#0e1218}
+.mh-native-sections button{padding:9px 10px;border:0;border-bottom:1px solid #202630;background:transparent;color:#7e8999;text-align:left;font-size:.66rem;cursor:pointer}
+.mh-native-sections button.active{background:#1c2430;color:#e8eef7;box-shadow:inset 2px 0 0 #8295b2}
+.mh-native-controls{min-width:0}
+.mh-native-empty{padding:18px;color:#7e8999;font-size:.72rem;line-height:1.5}
