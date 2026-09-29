@@ -392,3 +392,15 @@
 .setting-check strong{font-size:.74rem;color:#dce3ec}
 .setting-check small{font-size:.65rem;line-height:1.4;color:#758194}
 @media(max-width:620px){.mh-editor-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.mh-modeling{grid-template-columns:92px minmax(0,1fr)}}
+
+
+/* Primary task navigation follows MakeHuman's category/task-view pattern. */
+.workspace-nav{display:flex;align-items:stretch;gap:0;min-height:52px;padding:0 22px;border-bottom:1px solid #242a34;background:#0f1319}
+.workspace-nav button{min-width:150px;display:grid;align-content:center;gap:2px;padding:7px 16px;border:0;border-right:1px solid #242a34;background:transparent;color:#778395;text-align:left;cursor:pointer}
+.workspace-nav button:first-child{border-left:1px solid #242a34}
+.workspace-nav button strong{font-size:.76rem;color:#aeb8c6}
+.workspace-nav button span{font-size:.62rem}
+.workspace-nav button.active{background:#1a212b;box-shadow:inset 0 -2px 0 #8498b7}
+.workspace-nav button.active strong{color:#f0f4fa}
+.workflow-note .panel-header{border-bottom:0}
+@media(max-width:700px){.workspace-nav{padding:0;overflow-x:auto}.workspace-nav button{min-width:132px}}
