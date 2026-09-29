@@ -305,8 +305,8 @@ function CharacterMesh({ character }: { character: CharacterState }) {
           { y: 2.24 * height * torsoLength, rx: 0.4 * build * morphs.neckThickness, rz: 0.34 * build * morphs.neckThickness }
         ]}
       />
-      <Joint position={[-shoulderJointX, shoulderY, 0]} scale={[0.54 * build, 0.66 * build, 0.62 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
-      <Joint position={[shoulderJointX, shoulderY, 0]} scale={[0.54 * build, 0.66 * build, 0.62 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
+      <Joint position={[-shoulderJointX, shoulderY, 0]} scale={[0.42 * build, 0.54 * build, 0.56 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
+      <Joint position={[shoulderJointX, shoulderY, 0]} scale={[0.42 * build, 0.54 * build, 0.56 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
       <Joint position={[-hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
       <Joint position={[hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
       <mesh position={[0, neckY, 0]} scale={[0.38 * morphs.neckThickness, 0.48 * morphs.neckLength, 0.36 * morphs.neckThickness]} castShadow>
@@ -319,6 +319,11 @@ function CharacterMesh({ character }: { character: CharacterState }) {
       </mesh>
       {alien && <mesh position={[0, headY + 0.25 * head, -0.03]} scale={[0.7 * head * cranium, 0.46 * head * cranium, 0.65 * head * cranium]} castShadow><sphereGeometry args={[0.72, 36, 28]} /><Surface color={appearance.skinSecondary} roughness={skinRoughness} /></mesh>}
       {appearance.hairEnabled && <mesh position={[0, headY + 0.25 * head, -0.11]} scale={[0.63 * head, 0.31 * head * cranium, 0.62 * head]} castShadow><sphereGeometry args={[0.72, 36, 24]} /><Surface color={appearance.hair} roughness={0.9} /></mesh>}
+      {!alien && <>
+        <mesh position={[-0.49 * head * morphs.jawWidth, headY - 0.01 * head, 0]} scale={[0.09 * head, 0.16 * head, 0.055 * head]} castShadow><sphereGeometry args={[0.72, 20, 14]} /><Surface color={appearance.skin} roughness={skinRoughness} /></mesh>
+        <mesh position={[0.49 * head * morphs.jawWidth, headY - 0.01 * head, 0]} scale={[0.09 * head, 0.16 * head, 0.055 * head]} castShadow><sphereGeometry args={[0.72, 20, 14]} /><Surface color={appearance.skin} roughness={skinRoughness} /></mesh>
+        <mesh position={[0, headY - 0.06 * head, 0.505 * head]} scale={[0.075 * head, 0.13 * head, 0.11 * head]} castShadow><sphereGeometry args={[0.7, 20, 14]} /><Surface color={appearance.skin} roughness={skinRoughness} /></mesh>
+      </>}
       <Eye x={-0.19 * head} y={headY + 0.03 * head} z={0.42 * head * (alien ? cranium : 1)} scale={eyeScale} sclera={appearance.sclera} iris={appearance.eyes} alien={alien} />
       <Eye x={0.19 * head} y={headY + 0.03 * head} z={0.42 * head * (alien ? cranium : 1)} scale={eyeScale} sclera={appearance.sclera} iris={appearance.eyes} alien={alien} />
       {!alien && <>
@@ -526,7 +531,7 @@ export default function CharacterViewport({
         </div>
       </div>
       <div className="viewport-canvas">
-        <Canvas shadows camera={{ position: [6.7, 3.2, 7.2], fov: 38 }}>
+        <Canvas shadows camera={{ position: [5.5, 2.6, 6.2], fov: 34 }}>
           <color attach="background" args={['#11151d']} />
           <ambientLight intensity={1.2} />
           <directionalLight castShadow intensity={3.1} position={[4, 8, 5]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
@@ -535,7 +540,7 @@ export default function CharacterViewport({
           {aiMeshUrl && (viewMode === 'ai' || viewMode === 'overlay') && <Suspense fallback={null}><AlignedAICandidate url={aiMeshUrl} character={character} overlay={viewMode === 'overlay'} /></Suspense>}
           <gridHelper args={[18, 18, '#303846', '#202630']} position={[0, -2.05, 0]} />
           <ContactShadows position={[0, -2.03, 0]} opacity={0.38} scale={10} blur={2.5} far={6} />
-          <OrbitControls makeDefault target={[0, 0.7, 0]} minDistance={4.5} maxDistance={13} enablePan />
+          <OrbitControls makeDefault target={[0, 0.62, 0]} minDistance={3.8} maxDistance={13} enablePan />
         </Canvas>
       </div>
     </section>
