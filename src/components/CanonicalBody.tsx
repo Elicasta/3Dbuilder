@@ -38,15 +38,22 @@ function buildBody(character: CharacterState) {
   // junction loops instead of overlapping meshes, so shoulders and hips shade
   // as one body and this can become the stable deformation cage for rigging.
   const torso: Ring[] = [
-    { y: 0.43*h, rx:.43*build*m.hips, rz:.30*build*m.hipDepth },
-    { y: 0.56*h, rx:.53*build*m.hips, rz:.37*build*m.hipDepth },
+    // Denser landmark loops make this useful as a deformation cage rather than
+    // just a display shell. Extra loops sit around groin, waist, rib cage,
+    // shoulder girdle and neck where a humanoid rig needs predictable bending.
+    { y: 0.40*h, rx:.40*build*m.hips, rz:.29*build*m.hipDepth },
+    { y: 0.48*h, rx:.48*build*m.hips, rz:.34*build*m.hipDepth },
+    { y: 0.58*h, rx:.55*build*m.hips, rz:.39*build*m.hipDepth },
     { y: 0.72*h, rx:.58*build*m.hips, rz:.40*build*m.hipDepth },
-    { y: 0.98*h, rx:.50*build*m.waist, rz:.34*build*m.waistDepth },
-    { y: 1.28*h*m.torsoLength, rx:.52*build*m.waist, rz:.36*build*m.waistDepth },
-    { y: 1.52*h*m.torsoLength, rx:.67*build*m.chest, rz:.43*build*m.chestDepth },
-    { y: 1.78*h*m.torsoLength, rx:.76*build*m.chest*m.shoulders, rz:.46*build*m.chestDepth },
+    { y: 0.88*h, rx:.54*build*m.waist, rz:.36*build*m.waistDepth },
+    { y: 1.04*h, rx:.49*build*m.waist, rz:.33*build*m.waistDepth },
+    { y: 1.25*h*m.torsoLength, rx:.52*build*m.waist, rz:.36*build*m.waistDepth },
+    { y: 1.47*h*m.torsoLength, rx:.63*build*m.chest, rz:.42*build*m.chestDepth },
+    { y: 1.67*h*m.torsoLength, rx:.72*build*m.chest, rz:.46*build*m.chestDepth },
+    { y: 1.84*h*m.torsoLength, rx:.77*build*m.chest*m.shoulders, rz:.46*build*m.chestDepth },
     { y: shoulderY, rx:.72*build*m.shoulders, rz:.42*build*m.chestDepth },
-    { y: 2.16*h*m.torsoLength, rx:.50*build*m.shoulders, rz:.37*build*m.chestDepth },
+    { y: 2.12*h*m.torsoLength, rx:.60*build*m.shoulders, rz:.39*build*m.chestDepth },
+    { y: 2.20*h*m.torsoLength, rx:.43*build*m.shoulders, rz:.34*build*m.chestDepth },
     { y: 2.28*h*m.torsoLength, rx:.29*m.neckThickness, rz:.25*m.neckThickness }
   ];
 
@@ -62,11 +69,15 @@ function buildBody(character: CharacterState) {
 
   const addArm = (sign:number) => {
     const rings: ArmRing[] = [
-      {x:sign*shoulderX*.78,y:shoulderY-.01,ry:.27*armT,rz:.235*armT},
-      {x:sign*shoulderX*.98,y:shoulderY,ry:.25*armT,rz:.225*armT},
-      {x:sign*(shoulderX+.36*m.armLength),y:shoulderY-.025,ry:.215*armT,rz:.20*armT},
+      {x:sign*shoulderX*.72,y:shoulderY-.03,ry:.29*armT,rz:.245*armT},
+      {x:sign*shoulderX*.88,y:shoulderY+.015,ry:.275*armT,rz:.235*armT},
+      {x:sign*shoulderX*1.02,y:shoulderY,ry:.25*armT,rz:.225*armT},
+      {x:sign*(shoulderX+.30*m.armLength),y:shoulderY-.025,ry:.22*armT,rz:.205*armT},
+      {x:sign*(elbowX-.13*m.armLength),y:shoulderY-.04,ry:.185*armT,rz:.175*armT},
       {x:sign*elbowX,y:shoulderY-.045,ry:.17*armT,rz:.165*armT},
-      {x:sign*(elbowX+.34*m.armLength),y:shoulderY-.025,ry:.155*armT,rz:.15*armT},
+      {x:sign*(elbowX+.13*m.armLength),y:shoulderY-.04,ry:.17*armT,rz:.16*armT},
+      {x:sign*(elbowX+.40*m.armLength),y:shoulderY-.02,ry:.15*armT,rz:.145*armT},
+      {x:sign*(wristX-.11*m.armLength),y:shoulderY-.005,ry:.13*armT,rz:.125*armT},
       {x:sign*wristX,y:shoulderY,ry:.12*armT,rz:.115*armT}
     ];
     const starts:number[]=[];
@@ -80,7 +91,7 @@ function buildBody(character: CharacterState) {
     for(let r=0;r<starts.length-1;r++) connectRings(indices,starts[r],starts[r+1],seg,sign<0);
     // Shoulder bridge closes into the upper torso rather than leaving a visible
     // sphere/tube intersection. The inset keeps the armpit readable in T-pose.
-    const torsoStart=torsoStarts[7];
+    const torsoStart=torsoStarts[10];
     for(let s=0;s<seg;s++){
       const n=(s+1)%seg;
       const ca=Math.cos(s/seg*Math.PI*2);
@@ -95,11 +106,15 @@ function buildBody(character: CharacterState) {
 
   const addLeg=(sign:number)=>{
     const rings=[
-      {y:hipY+.18,x:sign*hipX,rx:.29*legT,rz:.255*legT},
-      {y:hipY-.10,x:sign*hipX,rx:.27*legT,rz:.25*legT},
-      {y:hipY-(hipY-kneeY)*.54,x:sign*hipX,rx:.245*legT,rz:.23*legT},
+      {y:hipY+.20,x:sign*hipX,rx:.30*legT,rz:.265*legT},
+      {y:hipY+.06,x:sign*hipX,rx:.295*legT,rz:.26*legT},
+      {y:hipY-.12,x:sign*hipX,rx:.275*legT,rz:.25*legT},
+      {y:hipY-(hipY-kneeY)*.42,x:sign*hipX,rx:.245*legT,rz:.225*legT},
+      {y:kneeY+.12,x:sign*hipX,rx:.19*legT,rz:.18*legT},
       {y:kneeY,x:sign*hipX,rx:.175*legT,rz:.17*legT},
+      {y:kneeY-.12,x:sign*hipX,rx:.18*legT,rz:.17*legT},
       {y:(kneeY+ankleY)/2,x:sign*hipX,rx:.19*legT,rz:.18*legT},
+      {y:ankleY+.10,x:sign*hipX,rx:.135*legT,rz:.13*legT},
       {y:ankleY,x:sign*hipX,rx:.125*legT,rz:.12*legT}
     ];
     const starts:number[]=[];
@@ -113,7 +128,7 @@ function buildBody(character: CharacterState) {
     for(let r=0;r<starts.length-1;r++) connectRings(indices,starts[r],starts[r+1],seg);
     // Fan the top thigh into the pelvis center. This creates an actual crotch/
     // glute transition instead of two cylinders disappearing into the torso.
-    const pelvis=torsoStarts[1];
+    const pelvis=torsoStarts[2];
     for(let s=0;s<seg;s++){
       const n=(s+1)%seg;
       const x0=vertices[(pelvis+s)*3], x1=vertices[(pelvis+n)*3];
