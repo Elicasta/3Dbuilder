@@ -308,6 +308,33 @@ fn count_files_with_extension(root: &Path, extension: &str) -> usize {
 }
 
 #[tauri::command]
+fn makehuman_base_obj(app: tauri::AppHandle) -> Result<String, String> {
+    let root = engine_root(&app, "makehuman")?.join("source");
+    if !root.join(".git").exists() {
+        return Err("Install MakeHuman hm08 Assets in Engine Lab first.".to_string());
+    }
+    let mut candidates = Vec::<PathBuf>::new();
+    let mut stack = vec![root];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() { stack.push(path); continue; }
+            if path.extension().and_then(|x| x.to_str()).map(|x| x.eq_ignore_ascii_case("obj")).unwrap_or(false) {
+                let name = path.file_name().and_then(|x| x.to_str()).unwrap_or("").to_ascii_lowercase();
+                if name.contains("base") || name.contains("hm08") { candidates.push(path); }
+            }
+        }
+    }
+    candidates.sort_by_key(|p| {
+        let name=p.file_name().and_then(|x|x.to_str()).unwrap_or("").to_ascii_lowercase();
+        if name=="base.obj" {0} else if name.contains("hm08") {1} else {2}
+    });
+    let path=candidates.into_iter().next().ok_or_else(|| "MakeHuman source is installed, but no hm08/base OBJ was found.".to_string())?;
+    fs::read_to_string(&path).map_err(|e| format!("Could not read MakeHuman basemesh {}: {e}",path.to_string_lossy()))
+}
+
+#[tauri::command]
 fn makehuman_asset_status(app: tauri::AppHandle) -> Result<MakeHumanAssetStatus, String> {
     let root = engine_root(&app, "makehuman")?;
     let source = root.join("source");
@@ -879,7 +906,7 @@ pub fn run() {
             open_in_blender,
             open_character_in_blender,
             save_recipe
-        , makehuman_asset_status])
+        , makehuman_asset_status, makehuman_base_obj])
         .run(tauri::generate_context!())
         .expect("error while running 3D Builder");
 }
