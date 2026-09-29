@@ -102,7 +102,7 @@ export function makeHumanControlGroups(lane: CharacterLane): MakeHumanControlGro
       id: 'macro',
       label: 'Macro',
       description: 'MakeHuman body-level variables.',
-      controls: byKeys(controls, ['height', 'build'])
+      controls: byKeys(controls, ['height'])
     },
     {
       id: 'measure',
@@ -118,9 +118,8 @@ export function makeHumanControlGroups(lane: CharacterLane): MakeHumanControlGro
       label: 'Face',
       description: 'Head, jaw, cheeks, eyes, nose, mouth and ears.',
       controls: byKeys(controls, [
-        'headScale','craniumScale','faceWidth','faceDepth','jawWidth',
-        'chinWidth','chinProjection','cheekWidth','eyeScale','eyeSpacing',
-        'browHeight','noseWidth','noseProjection','mouthWidth','lipFullness','earSize'
+        'faceWidth','faceDepth','jawWidth','jawHeight','chinProjection','cheekWidth','eyeScale','eyeSpacing',
+        'browHeight','noseWidth','noseLength','noseProjection','mouthWidth','lipFullness','earSize'
       ])
     },
     {
