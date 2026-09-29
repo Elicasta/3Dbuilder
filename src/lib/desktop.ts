@@ -36,6 +36,16 @@ export async function getMakeHumanBaseObj(): Promise<string> {
   return invoke<string>('makehuman_base_obj');
 }
 
+export interface MakeHumanAssetEntry {
+  kind: 'geometry' | 'proxy' | 'material';
+  name: string;
+  relativePath: string;
+}
+
+export async function getMakeHumanAssetCatalog(): Promise<MakeHumanAssetEntry[]> {
+  return invoke<MakeHumanAssetEntry[]>('makehuman_asset_catalog');
+}
+
 export async function getMakeHumanDefinitionText(fileName: string): Promise<string> {
   return invoke<string>('makehuman_definition_text', { fileName });
 }
