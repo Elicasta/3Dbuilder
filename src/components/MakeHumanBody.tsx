@@ -106,9 +106,8 @@ export default function MakeHumanBody({
   }, [baseGeometry, character.morphs]);
 
   useEffect(() => () => {
-    geometry.dispose();
     baseGeometry.dispose();
-  }, [baseGeometry, geometry]);
+  }, [baseGeometry]);
 
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
