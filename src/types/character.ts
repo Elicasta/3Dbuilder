@@ -1,4 +1,7 @@
 export type ReferenceSlot = 'front' | 'side' | 'back';
+export type CharacterLane = 'male' | 'female' | 'alien';
+export type CharacterStyle = 'stylized' | 'semiReal' | 'realHuman';
+export type RenderTarget = 'general' | 'unreal' | 'print';
 
 export interface CharacterReferences {
   front: File | null;
@@ -10,19 +13,48 @@ export interface BodyMorphs {
   height: number;
   build: number;
   shoulders: number;
+  chest: number;
+  chestDepth: number;
   waist: number;
+  waistDepth: number;
+  hips: number;
+  hipDepth: number;
+  torsoLength: number;
+  armLength: number;
+  armThickness: number;
   legLength: number;
+  legThickness: number;
+  handSize: number;
+  footSize: number;
+  neckLength: number;
+  neckThickness: number;
   headScale: number;
+  jawWidth: number;
+  craniumScale: number;
+  eyeScale: number;
+  bust: number;
+  bustProjection: number;
 }
 
-export interface CharacterColors {
+export interface AppearanceState {
   skin: string;
+  skinSecondary: string;
+  eyes: string;
+  sclera: string;
   hair: string;
+  brows: string;
+  lips: string;
+  markings: string;
   underwear: string;
   shirt: string;
   pants: string;
   boots: string;
   vest: string;
+  hairEnabled: boolean;
+  skinRoughness: number;
+  skinSubsurface: number;
+  freckles: number;
+  markingsOpacity: number;
 }
 
 export type WardrobeSlot = 'shirt' | 'pants' | 'boots' | 'vest';
@@ -36,36 +68,69 @@ export interface WardrobeState {
 
 export interface CharacterState {
   name: string;
-  style: 'stylized' | 'realistic';
-  base: 'male' | 'female';
+  lane: CharacterLane;
+  style: CharacterStyle;
+  renderTarget: RenderTarget;
   morphs: BodyMorphs;
-  colors: CharacterColors;
+  appearance: AppearanceState;
   wardrobe: WardrobeState;
   rigCharacter: boolean;
   generateTextures: boolean;
   blenderCleanup: boolean;
 }
 
+export const BASE_MORPHS: BodyMorphs = {
+  height: 1,
+  build: 1,
+  shoulders: 1,
+  chest: 1,
+  chestDepth: 1,
+  waist: 1,
+  waistDepth: 1,
+  hips: 1,
+  hipDepth: 1,
+  torsoLength: 1,
+  armLength: 1,
+  armThickness: 1,
+  legLength: 1,
+  legThickness: 1,
+  handSize: 1,
+  footSize: 1,
+  neckLength: 1,
+  neckThickness: 1,
+  headScale: 1,
+  jawWidth: 1,
+  craniumScale: 1,
+  eyeScale: 1,
+  bust: 1,
+  bustProjection: 1
+};
+
 export const DEFAULT_CHARACTER: CharacterState = {
   name: 'New Character',
+  lane: 'male',
   style: 'stylized',
-  base: 'male',
-  morphs: {
-    height: 1,
-    build: 1,
-    shoulders: 1,
-    waist: 1,
-    legLength: 1,
-    headScale: 1
-  },
-  colors: {
+  renderTarget: 'general',
+  morphs: { ...BASE_MORPHS },
+  appearance: {
     skin: '#9a6248',
+    skinSecondary: '#7d4c39',
+    eyes: '#5c4938',
+    sclera: '#eee9df',
     hair: '#17120f',
+    brows: '#211813',
+    lips: '#8f5148',
+    markings: '#334f43',
     underwear: '#d8d8d8',
     shirt: '#4f5968',
     pants: '#323844',
     boots: '#7a5b3e',
-    vest: '#655947'
+    vest: '#655947',
+    hairEnabled: true,
+    skinRoughness: 0.62,
+    skinSubsurface: 0.18,
+    freckles: 0,
+    markingsOpacity: 0
   },
   wardrobe: {
     shirt: false,
