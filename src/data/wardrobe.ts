@@ -7,8 +7,13 @@ export interface WardrobeDefinition {
 }
 
 export const WARDROBE: WardrobeDefinition[] = [
-  { slot: 'shirt', label: 'Shirt', description: 'Fitted base-layer shirt.' },
-  { slot: 'pants', label: 'Pants', description: 'Simple fitted trousers.' },
-  { slot: 'boots', label: 'Boots', description: 'Rigid ankle-height boots.' },
-  { slot: 'vest', label: 'Vest', description: 'Outer layer ready for future gear fitting.' }
+  { slot: 'shirt', label: 'Top', description: 'Fitted base-layer shirt or uniform top.' },
+  { slot: 'pants', label: 'Bottom', description: 'Trousers, uniform pants, or lower garment.' },
+  { slot: 'boots', label: 'Footwear', description: 'Boots or shoes attached to the base rig.' },
+  { slot: 'vest', label: 'Outerwear', description: 'Jacket, vest, armor, or plate-carrier layer.' },
+  { slot: 'headwear', label: 'Headwear', description: 'Hat, helmet, hood, or creature head layer.' },
+  { slot: 'eyewear', label: 'Eyewear', description: 'Glasses, goggles, visor, or eye accessory.' },
+  { slot: 'gloves', label: 'Gloves', description: 'Hand layer that follows the hand bones.' },
+  { slot: 'belt', label: 'Belt', description: 'Waist attachment and holster anchor.' },
+  { slot: 'gear', label: 'Gear', description: 'Pouches, packs, tactical pieces, and accessories.' }
 ];
