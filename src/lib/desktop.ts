@@ -46,6 +46,17 @@ export async function getMakeHumanAssetCatalog(): Promise<MakeHumanAssetEntry[]>
   return invoke<MakeHumanAssetEntry[]>('makehuman_asset_catalog');
 }
 
+export interface MakeHumanAssetBundle {
+  relativePath: string;
+  definitionText: string;
+  objText: string;
+  materialText: string | null;
+}
+
+export async function getMakeHumanAssetBundle(relativePath: string): Promise<MakeHumanAssetBundle> {
+  return invoke<MakeHumanAssetBundle>('makehuman_asset_bundle', { relativePath });
+}
+
 export async function getMakeHumanDefinitionText(fileName: string): Promise<string> {
   return invoke<string>('makehuman_definition_text', { fileName });
 }
