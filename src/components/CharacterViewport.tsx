@@ -345,7 +345,7 @@ export default function CharacterViewport({
         {(Object.keys(POSES) as PosePreset[]).map(preset => <button key={preset} type="button" className={posePreset === preset ? 'active' : ''} onClick={() => setPosePreset(preset)}>{POSE_LABELS[preset]}</button>)}
       </div>
       <div className="viewport-canvas">
-        <Canvas shadows camera={{ position: [5.5, 2.6, 6.2], fov: 34 }}>
+        <Canvas shadows camera={{ position: [0, 0.35, 8.6], fov: 32 }}>
           <color attach="background" args={['#11151d']} />
           <ambientLight intensity={1.2} />
           <directionalLight castShadow intensity={3.1} position={[4, 8, 5]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
@@ -355,7 +355,7 @@ export default function CharacterViewport({
           {aiMeshUrl && (viewMode === 'ai' || viewMode === 'overlay') && <Suspense fallback={null}><AlignedAICandidate url={aiMeshUrl} character={character} overlay={viewMode === 'overlay'} /></Suspense>}
           <gridHelper args={[18, 18, '#303846', '#202630']} position={[0, -2.05, 0]} />
           <ContactShadows position={[0, -2.03, 0]} opacity={0.38} scale={10} blur={2.5} far={6} />
-          <OrbitControls makeDefault target={[0, 0.62, 0]} minDistance={3.8} maxDistance={13} enablePan />
+          <OrbitControls makeDefault target={[0, 0.15, 0]} minDistance={3.8} maxDistance={13} enablePan />
         </Canvas>
       </div>
     </section>
