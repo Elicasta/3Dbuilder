@@ -95,11 +95,22 @@ export interface WardrobeState {
   gear: boolean;
 }
 
+export interface MakeHumanMacroState {
+  age: number;
+  muscle: number;
+  weight: number;
+  proportions: number;
+  african: number;
+  asian: number;
+  caucasian: number;
+}
+
 export interface CharacterState {
   name: string;
   lane: CharacterLane;
   style: CharacterStyle;
   renderTarget: RenderTarget;
+  macro: MakeHumanMacroState;
   morphs: BodyMorphs;
   appearance: AppearanceState;
   wardrobe: WardrobeState;
@@ -155,6 +166,15 @@ export const DEFAULT_CHARACTER: CharacterState = {
   lane: 'male',
   style: 'stylized',
   renderTarget: 'general',
+  macro: {
+    age: 0.5,
+    muscle: 0.5,
+    weight: 0.5,
+    proportions: 0.5,
+    african: 1 / 3,
+    asian: 1 / 3,
+    caucasian: 1 / 3
+  },
   morphs: { ...BASE_MORPHS },
   appearance: {
     skin: '#9a6248',
