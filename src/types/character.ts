@@ -116,11 +116,15 @@ export interface AnatomyState {
   mode: AnatomyMode;
   penisLength: number;
   penisGirth: number;
+  glansSize: number;
   testicleSize: number;
+  scrotumDrop: number;
   vulvaWidth: number;
   labiaMajora: number;
   labiaMinora: number;
   clitoralSize: number;
+  vaginalOpening: number;
+  monsPubis: number;
 }
 
 export interface CharacterState {
@@ -239,11 +243,15 @@ export const DEFAULT_CHARACTER: CharacterState = {
     mode: 'off',
     penisLength: 0.5,
     penisGirth: 0.5,
+    glansSize: 0.5,
     testicleSize: 0.5,
+    scrotumDrop: 0.5,
     vulvaWidth: 0.5,
     labiaMajora: 0.5,
     labiaMinora: 0.5,
-    clitoralSize: 0.5
+    clitoralSize: 0.5,
+    vaginalOpening: 0.5,
+    monsPubis: 0.5
   },
   rigCharacter: true,
   generateTextures: true,
