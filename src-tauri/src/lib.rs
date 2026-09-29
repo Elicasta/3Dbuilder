@@ -390,16 +390,18 @@ fn prepare_engine_runtime(app: tauri::AppHandle, id: String) -> Result<String, S
         runtime_requirements.push("onnxruntime".to_string());
     }
 
-    // Keep the numerical stack internally consistent. TripoSR pins trimesh
-    // 4.0.5, whose GLB exporter needs NumPy 1.x. New SciPy releases require
-    // NumPy 2, while older SciPy releases can still reference np.long (removed
-    // in NumPy 1.24). NumPy 1.23.5 + SciPy 1.10.1 is the compatible overlap.
+    // Keep Python 3.12 on a wheel-backed numerical stack. NumPy 1.23 has no
+    // CPython 3.12 wheel. Use NumPy 1.26 + a matching SciPy and upgrade
+    // trimesh instead of downgrading NumPy to satisfy trimesh 4.0.5.
     runtime_requirements.retain(|line| {
         let lower = line.to_ascii_lowercase();
-        !lower.starts_with("numpy") && !lower.starts_with("scipy")
+        !lower.starts_with("numpy")
+            && !lower.starts_with("scipy")
+            && !lower.starts_with("trimesh")
     });
-    runtime_requirements.push("numpy==1.23.5".to_string());
-    runtime_requirements.push("scipy==1.10.1".to_string());
+    runtime_requirements.push("numpy==1.26.4".to_string());
+    runtime_requirements.push("scipy==1.12.0".to_string());
+    runtime_requirements.push("trimesh>=4.4,<5".to_string());
 
     let runtime_requirements_path = root.join("triposr-runtime-requirements.txt");
     fs::write(
@@ -489,12 +491,13 @@ fn run_reconstruction(
         return Err("TripoSR runtime is not prepared.".to_string());
     }
 
-    // Self-heal runtimes prepared with a mismatched NumPy/SciPy pair before
-    // paying the cost of reconstruction.
+    // Self-heal older prepared runtimes before reconstruction. These versions
+    // all publish CPython 3.12 macOS wheels and avoid the NumPy-2/trimesh-4.0
+    // exporter collision.
     let numerical_stack_compatible = Command::new(&python)
         .args([
             "-c",
-            "import numpy, scipy, sys; sys.exit(0 if numpy.__version__ == '1.23.5' and scipy.__version__ == '1.10.1' else 1)",
+            "import numpy, scipy, trimesh, sys; from packaging.version import Version; sys.exit(0 if numpy.__version__ == '1.26.4' and scipy.__version__ == '1.12.0' and Version(trimesh.__version__) >= Version('4.4.0') else 1)",
         ])
         .status()
         .map(|status| status.success())
@@ -507,9 +510,10 @@ fn run_reconstruction(
             "pip",
             "install",
             "--upgrade",
-            "--force-reinstall",
-            "numpy==1.23.5",
-            "scipy==1.10.1",
+            "--prefer-binary",
+            "numpy==1.26.4",
+            "scipy==1.12.0",
+            "trimesh>=4.4,<5",
         ]);
         run_checked(&mut repair_stack, "Repair TripoSR numerical compatibility")?;
     }
