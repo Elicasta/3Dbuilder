@@ -351,12 +351,58 @@ fn prepare_engine_runtime(app: tauri::AppHandle, id: String) -> Result<String, S
     torch.args(["-m", "pip", "install", "torch", "torchvision"]);
     run_checked(&mut torch, "Install PyTorch")?;
 
-    let requirements = source.join("requirements.txt");
+    // Upstream pins xatlas==0.0.9. That release has no CPython 3.12
+    // macOS ARM64 wheel, so pip falls back to a source build whose old CMake
+    // policy currently fails on modern macOS. xatlas 0.0.11 publishes native
+    // CPython 3.10-3.13 Apple Silicon wheels and is API-compatible with the
+    // import/export calls TripoSR uses.
+    //
+    // The CLI inference path also does not need Gradio. Leaving an unpinned
+    // Gradio in the engine requirements makes pip backtrack through years of
+    // releases. Build a small local requirements overlay instead of modifying
+    // the checked-out research engine.
+    let upstream_requirements = source.join("requirements.txt");
+    let requirements_text = fs::read_to_string(&upstream_requirements)
+        .map_err(|error| format!("Could not read TripoSR requirements: {error}"))?;
+    let mut runtime_requirements = Vec::new();
+    for raw_line in requirements_text.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line == "gradio" || line.starts_with("gradio==") {
+            continue;
+        }
+        if line == "xatlas==0.0.9" || line == "xatlas" {
+            runtime_requirements.push("xatlas==0.0.11".to_string());
+        } else {
+            runtime_requirements.push(line.to_string());
+        }
+    }
+    if !runtime_requirements.iter().any(|line| line.starts_with("xatlas")) {
+        runtime_requirements.push("xatlas==0.0.11".to_string());
+    }
+
+    let runtime_requirements_path = root.join("triposr-runtime-requirements.txt");
+    fs::write(
+        &runtime_requirements_path,
+        format!("{}\\n", runtime_requirements.join("\\n")),
+    )
+    .map_err(|error| format!("Could not write TripoSR runtime requirements: {error}"))?;
+
     let mut dependencies = Command::new(&python);
     dependencies
-        .args(["-m", "pip", "install", "-r"])
-        .arg(&requirements);
+        .args(["-m", "pip", "install", "--prefer-binary", "-r"])
+        .arg(&runtime_requirements_path);
     run_checked(&mut dependencies, "Install TripoSR dependencies")?;
+
+    // Fail preparation here, not later during the first build.
+    let mut verify = Command::new(&python);
+    verify.args([
+        "-c",
+        "import torch, xatlas, trimesh, rembg, PIL, omegaconf, transformers; print('TripoSR runtime verified')",
+    ]);
+    run_checked(&mut verify, "Verify TripoSR runtime")?;
 
     fs::write(root.join("venv").join(".3dbuilder-ready"), b"ready")
         .map_err(|error| format!("Could not write runtime marker: {error}"))?;
