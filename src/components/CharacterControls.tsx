@@ -117,7 +117,7 @@ export default function CharacterControls({ character, onChange, onReset }: Char
         </div>
       )}
 
-      {tab === 'wardrobe' && <MakeHumanAssetLibrary />}
+      {tab === 'wardrobe' && <MakeHumanAssetLibrary character={character} onChange={onChange} />}
 
       {tab === 'output' && (
         <div className="mh-tab-body output-settings">
