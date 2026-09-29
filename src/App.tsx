@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import CharacterControls from './components/CharacterControls';
 import CharacterViewport from './components/CharacterViewport';
-import ReferenceUploader from './components/ReferenceUploader';
 import EngineLab from './components/EngineLab';
+import MultiViewFitPanel from './components/MultiViewFitPanel';
+import ReferenceUploader from './components/ReferenceUploader';
+import { defaultsForLane } from './data/characterProfiles';
 import {
   detectBlender,
   openInBlender,
@@ -11,12 +13,15 @@ import {
   stageReference,
   type BlenderStatus
 } from './lib/desktop';
+import { analyzeMultiView } from './lib/multiview';
 import {
   DEFAULT_CHARACTER,
+  type BodyMorphs,
   type CharacterReferences,
   type CharacterState,
   type ReferenceSlot
 } from './types/character';
+import type { MultiViewAnalysis } from './types/multiview';
 
 const EMPTY_REFERENCES: CharacterReferences = {
   front: null,
@@ -31,6 +36,7 @@ export default function App() {
   const [blender, setBlender] = useState<BlenderStatus | null>(null);
   const [generatedMesh, setGeneratedMesh] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
+  const [lastFit, setLastFit] = useState<MultiViewAnalysis | null>(null);
 
   useEffect(() => {
     detectBlender()
@@ -45,12 +51,30 @@ export default function App() {
     setStatus(file ? `${slot} reference loaded` : `${slot} reference cleared`);
   }
 
-  function resetBody() {
+  function applyFit(patch: Partial<BodyMorphs>, analysis: MultiViewAnalysis) {
     setCharacter((current) => ({
       ...current,
-      morphs: { ...DEFAULT_CHARACTER.morphs }
+      morphs: {
+        ...current.morphs,
+        ...patch
+      }
     }));
-    setStatus('Body proportions reset');
+    setLastFit(analysis);
+    setStatus(
+      `Multi-view fit applied at ${Math.round(analysis.confidence * 100)}% silhouette confidence.`
+    );
+  }
+
+  function resetBody() {
+    setCharacter((current) => {
+      const reset = defaultsForLane(current.lane, current.style, current);
+      return {
+        ...current,
+        morphs: reset.morphs,
+        appearance: reset.appearance
+      };
+    });
+    setStatus('Lane proportions and appearance reset.');
   }
 
   async function saveRecipe() {
@@ -65,21 +89,37 @@ export default function App() {
   async function buildCharacter() {
     const front = references.front;
     if (!front) {
-      setStatus('Add a front reference first. Side and back will join the fusion pipeline next.');
+      setStatus('Add a front reference first. Full builds are multi-view whenever side/back are available.');
       return;
     }
 
     setBuilding(true);
     setGeneratedMesh(null);
-    try {
-      setStatus('Staging front reference…');
-      const inputPath = await stageReference(front);
 
-      setStatus('Running TripoSR reconstruction. First run may download model weights…');
+    try {
+      const referenceCount = Object.values(references).filter(Boolean).length;
+
+      if (referenceCount >= 2) {
+        setStatus(`Analyzing ${referenceCount} reference views and fitting canonical body…`);
+        const analysis = await analyzeMultiView(references);
+        applyFit(analysis.morphPatch, analysis);
+      }
+
+      setStatus(
+        referenceCount === 3
+          ? 'Canonical 3-view fit complete. Running AI geometry candidate…'
+          : 'Running AI geometry candidate from the front reference…'
+      );
+
+      const inputPath = await stageReference(front);
       const meshPath = await runReconstruction('triposr', inputPath);
 
       setGeneratedMesh(meshPath);
-      setStatus('AI mesh generated. Open it in Blender or continue shaping the canonical character.');
+      setStatus(
+        referenceCount === 3
+          ? 'Multi-view body fit + AI mesh candidate complete. Blender can inspect the raw candidate while the builder keeps the editable canonical character.'
+          : 'AI mesh generated. Add all three views for the strongest canonical fit.'
+      );
     } catch (error) {
       setStatus(`Build failed: ${String(error)}`);
     } finally {
@@ -105,7 +145,7 @@ export default function App() {
         <div className="brand-group">
           <div className="brand-mark">3D</div>
           <div>
-            <span className="eyebrow">Mac + Windows · Alpha</span>
+            <span className="eyebrow">Mac + Windows · Character Lab</span>
             <h1>3D Builder</h1>
           </div>
         </div>
@@ -115,24 +155,36 @@ export default function App() {
             <span>Character</span>
             <input
               value={character.name}
-              onChange={(event) => setCharacter({ ...character, name: event.target.value })}
+              onChange={(event) =>
+                setCharacter({
+                  ...character,
+                  name: event.target.value
+                })
+              }
             />
           </label>
+
           <button className="secondary-button" type="button" onClick={saveRecipe}>
             Save recipe
           </button>
+
           {generatedMesh && (
-            <button className="secondary-button" type="button" onClick={() => void openGeneratedMesh()}>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => void openGeneratedMesh()}
+            >
               Open AI mesh in Blender
             </button>
           )}
+
           <button
             className="primary-button"
             type="button"
             disabled={building}
             onClick={() => void buildCharacter()}
           >
-            {building ? 'Building…' : 'Build Character'}
+            {building ? 'Building…' : referenceCount === 3 ? 'Build 3-View Character' : 'Build Character'}
           </button>
         </div>
       </header>
@@ -141,7 +193,17 @@ export default function App() {
         <span className="status-dot" />
         <span>{status}</span>
         <span className="status-spacer" />
+        <span>{character.lane}</span>
+        <span>·</span>
+        <span>{character.style}</span>
+        <span>·</span>
         <span>{referenceCount}/3 refs</span>
+        {lastFit && (
+          <>
+            <span>·</span>
+            <span>fit {Math.round(lastFit.confidence * 100)}%</span>
+          </>
+        )}
         <span>·</span>
         <span>
           Blender:{' '}
@@ -156,7 +218,12 @@ export default function App() {
       <section className="workspace">
         <aside className="inspector">
           <ReferenceUploader references={references} onSelect={handleReference} />
-          <CharacterControls character={character} onChange={setCharacter} onReset={resetBody} />
+          <MultiViewFitPanel references={references} onFit={applyFit} />
+          <CharacterControls
+            character={character}
+            onChange={setCharacter}
+            onReset={resetBody}
+          />
         </aside>
 
         <div className="stage">
@@ -166,29 +233,29 @@ export default function App() {
             <div className="pipeline-step done">
               <span>01</span>
               <div>
-                <strong>Desktop foundation</strong>
-                <small>Tauri shell · macOS · Windows</small>
+                <strong>Profile</strong>
+                <small>Male · Female · Alien / 3 style families</small>
               </div>
             </div>
-            <div className="pipeline-step done">
+            <div className={referenceCount === 3 ? 'pipeline-step done' : 'pipeline-step next'}>
               <span>02</span>
               <div>
-                <strong>Character model + live viewport</strong>
-                <small>Body morphs · materials · wardrobe</small>
+                <strong>Multi-view fit</strong>
+                <small>Front · side · back → canonical morphs</small>
               </div>
             </div>
-            <div className="pipeline-step next">
+            <div className={generatedMesh ? 'pipeline-step done' : 'pipeline-step next'}>
               <span>03</span>
               <div>
-                <strong>Reference reconstruction</strong>
-                <small>Front / side / back → fitted base mesh</small>
+                <strong>AI reconstruction</strong>
+                <small>TripoSR now · CharacterGen / research fusion next</small>
               </div>
             </div>
             <div className="pipeline-step">
               <span>04</span>
               <div>
-                <strong>Blender automation + rig export</strong>
-                <small>GLB · FBX · BLEND</small>
+                <strong>Finish & export</strong>
+                <small>Blender · Unreal FBX · GLB · BLEND · STL</small>
               </div>
             </div>
           </section>
