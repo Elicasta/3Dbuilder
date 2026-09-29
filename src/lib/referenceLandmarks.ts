@@ -3,9 +3,11 @@ import { FaceLandmarker, FilesetResolver, PoseLandmarker } from '@mediapipe/task
 export interface LandmarkPoint { x:number; y:number; z:number; visibility?:number }
 export interface ReferenceLandmarks {
   pose: LandmarkPoint[];
+  poseWorld: LandmarkPoint[];
   face: LandmarkPoint[];
   poseConfidence: number;
   faceConfidence: number;
+  segmentationMask: { width:number; height:number; values:Float32Array } | null;
 }
 
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm';
@@ -56,8 +58,15 @@ export async function detectReferenceLandmarks(file:File):Promise<ReferenceLandm
   const poseResult=pose.detect(image);
   const faceResult=face.detect(image);
   const posePoints=(poseResult.landmarks?.[0]??[]) as LandmarkPoint[];
+  const poseWorld=(poseResult.worldLandmarks?.[0]??[]) as LandmarkPoint[];
   const facePoints=(faceResult.faceLandmarks?.[0]??[]) as LandmarkPoint[];
-  return {pose:posePoints,face:facePoints,poseConfidence:confidence(posePoints),faceConfidence:facePoints.length?1:0};
+  const mask=poseResult.segmentationMasks?.[0]??null;
+  let segmentationMask:ReferenceLandmarks['segmentationMask']=null;
+  if(mask){
+    const values=mask.getAsFloat32Array();
+    segmentationMask={width:mask.width,height:mask.height,values:new Float32Array(values)};
+  }
+  return {pose:posePoints,poseWorld,face:facePoints,poseConfidence:confidence(posePoints),faceConfidence:facePoints.length?1:0,segmentationMask};
 }
 
 export function bodyRatiosFromPose(points:LandmarkPoint[]){
@@ -89,3 +98,16 @@ export function faceRatios(points:LandmarkPoint[]){
 }
 
 export function landmarkRuntimeStatus(){return {ready:Boolean(engines)&&!engineFailure,error:engineFailure};}
+
+export function anatomicalRowsFromPose(points:LandmarkPoint[]){
+  const avg=(a:number,b:number)=>points[a]&&points[b]?(points[a].y+points[b].y)/2:null;
+  const shoulder=avg(11,12), hip=avg(23,24);
+  if(shoulder===null||hip===null)return null;
+  const torso=Math.max(.001,hip-shoulder);
+  return {
+    shoulder,
+    chest:shoulder+torso*.28,
+    waist:shoulder+torso*.68,
+    hip
+  };
+}
