@@ -6,6 +6,11 @@ export interface MakeHumanPose {
 }
 export const MAKEHUMAN_POSES:Record<string,MakeHumanPose>={
   bind:{rotations:{}},
+  aPose:{rotations:{'upperarm01.L':[0,0,.42],'upperarm01.R':[0,0,-.42]}},
+  relaxed:{rotations:{'upperarm01.L':[0,0,1.18],'upperarm01.R':[0,0,-1.18]}},
+  shoulderTest:{rotations:{'upperarm01.L':[0,0,.88],'upperarm01.R':[0,0,-.88]}},
+  elbowTest:{rotations:{'upperarm01.L':[0,0,.32],'upperarm01.R':[0,0,-.32],'lowerarm01.L':[0,0,-1.18],'lowerarm01.R':[0,0,1.18]}},
+  kneeTest:{rotations:{'upperleg01.L':[-.12,0,0],'upperleg01.R':[.12,0,0],'lowerleg01.L':[.72,0,0],'lowerleg01.R':[.72,0,0]}},
   shoulderRaise:{rotations:{'upperarm01.L':[0,0,-1.35],'upperarm01.R':[0,0,1.35]}},
   elbowFlex:{rotations:{'upperarm01.L':[0,0,-.35],'upperarm01.R':[0,0,.35],'lowerarm01.L':[0,0,-2.15],'lowerarm01.R':[0,0,2.15]}},
   hipFlex:{rotations:{'upperleg01.L':[-1.65,0,0],'upperleg01.R':[-1.65,0,0]}},
