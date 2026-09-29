@@ -8,6 +8,7 @@ import { defaultsForLane } from './data/characterProfiles';
 import {
   detectBlender,
   getLatestGeneratedMesh,
+  getMakeHumanBaseObj,
   openInBlender,
   openCanonicalInBlender,
   runReconstruction,
@@ -42,6 +43,7 @@ export default function App() {
   const [building, setBuilding] = useState(false);
   const [buildStage, setBuildStage] = useState<'idle' | 'fit' | 'ai' | 'done' | 'fallback'>('idle');
   const [lastFit, setLastFit] = useState<MultiViewAnalysis | null>(null);
+  const [makeHumanObj, setMakeHumanObj] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'canonical' | 'rig' | 'ai' | 'overlay'>('canonical');
 
   useEffect(() => {
@@ -60,6 +62,15 @@ export default function App() {
       })
       .catch(() => {
         // No previous candidate is a normal first-run state.
+      });
+
+    getMakeHumanBaseObj()
+      .then((obj) => {
+        setMakeHumanObj(obj);
+        setStatus('MakeHuman hm08 canonical body loaded.');
+      })
+      .catch(() => {
+        // Keep the procedural cage as a resilient fallback until assets install.
       });
   }, []);
 
@@ -281,6 +292,7 @@ export default function App() {
               aiMeshUrl={generatedMesh ? convertFileSrc(generatedMesh) : null}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
+              makeHumanObj={makeHumanObj}
             />
           </Suspense>
 
