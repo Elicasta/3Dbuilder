@@ -99,6 +99,24 @@ export async function saveCharacterRecipe(character: CharacterState): Promise<st
           ? { family: 'procedural-cage-v1', morphEngine: 'procedural', targets: [] }
           : { family: 'makehuman-hm08-v1', morphEngine: 'makehuman-targets-v1', targets: makeHumanTargets },
         topology: { stableVertexIds: true, maxInfluences: 4, subdivisionReady: character.lane === 'alien' },
+        materials: {
+          body: {
+            uvSet: 'UV0',
+            textureResolution: character.renderTarget === 'unreal' ? 4096 : 2048,
+            pbrSlots: ['BaseColor', 'Normal', 'Roughness', 'Metallic', 'AO'],
+            skin: {
+              baseColor: character.appearance.skin,
+              secondary: character.appearance.skinSecondary,
+              roughness: character.appearance.skinRoughness,
+              subsurfaceIntent: character.appearance.skinSubsurface
+            }
+          },
+          separateObjects: ['eyes', 'hair', 'wardrobe']
+        },
+        wardrobe: {
+          slots: character.wardrobe,
+          basePresentation: 'underwear/minimal-clothing'
+        },
         rig: { joints: canonicalJoints(character), skin: productionSkinWeights(character) },
         exportedAt: new Date().toISOString(),
         character
