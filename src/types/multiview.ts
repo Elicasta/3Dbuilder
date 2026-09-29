@@ -26,6 +26,7 @@ export interface MultiViewAnalysis {
   back: ViewAnalysis | null;
   morphPatch: Partial<BodyMorphs>;
   confidence: number;
+  landmarkConfidence: number;
   fitQuality: number;
   notes: string[];
 }
