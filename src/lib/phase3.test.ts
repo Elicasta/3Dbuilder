@@ -61,4 +61,16 @@ describe('phase 3 production character contract',()=>{
     expect(blended.length).toBeGreaterThan(0);
     geometry.dispose();
   });
+
+  it('includes production neck and head geometry in the exported canonical body',()=>{
+    const geometry=buildCanonicalGeometry(DEFAULT_CHARACTER);
+    const p=geometry.getAttribute('position');
+    let highest=-Infinity;
+    for(let i=0;i<p.count;i++) highest=Math.max(highest,p.getY(i));
+    expect(highest).toBeGreaterThan(2.8);
+    const tallHead=buildCanonicalGeometry({...DEFAULT_CHARACTER,morphs:{...DEFAULT_CHARACTER.morphs,headScale:1.2,craniumScale:1.15}});
+    expect(tallHead.getAttribute('position').count).toBe(p.count);
+    expect(tallHead.getIndex()?.count).toBe(geometry.getIndex()?.count);
+    geometry.dispose(); tallHead.dispose();
+  });
 });
