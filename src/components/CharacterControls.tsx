@@ -4,6 +4,7 @@ import NativeMakeHumanControls from './NativeMakeHumanControls';
 import MakeHumanAssetLibrary from './MakeHumanAssetLibrary';
 import type {
   AppearanceState,
+  AnatomyMode,
   CharacterLane,
   CharacterState,
   CharacterStyle,
@@ -20,12 +21,12 @@ type EditorTab = 'modeling' | 'materials' | 'wardrobe' | 'output';
 
 const COLORS: Array<{ key: keyof Pick<AppearanceState,
   'skin' | 'skinSecondary' | 'eyes' | 'sclera' | 'hair' | 'brows' | 'lips' | 'markings' |
-  'underwear' | 'shirt' | 'pants' | 'boots' | 'vest'>; label: string }> = [
+  'shirt' | 'pants' | 'boots' | 'vest'>; label: string }> = [
   { key: 'skin', label: 'Skin' }, { key: 'skinSecondary', label: 'Skin secondary' },
   { key: 'eyes', label: 'Iris' }, { key: 'sclera', label: 'Sclera' },
   { key: 'hair', label: 'Hair' }, { key: 'brows', label: 'Brows' },
   { key: 'lips', label: 'Lips' }, { key: 'markings', label: 'Markings' },
-  { key: 'underwear', label: 'Base layer' }, { key: 'shirt', label: 'Shirt' },
+  { key: 'shirt', label: 'Shirt' },
   { key: 'pants', label: 'Pants' }, { key: 'boots', label: 'Boots' }, { key: 'vest', label: 'Vest' }
 ];
 
@@ -53,6 +54,8 @@ export default function CharacterControls({ character, onChange, onReset }: Char
   const changeStyle = (style: CharacterStyle) => onChange(applyStyle(style, character));
   const setMacro = (key: keyof MakeHumanMacroState, value: number) =>
     onChange({ ...character, macro: { ...character.macro, [key]: value } });
+  const setAnatomy = <K extends keyof CharacterState['anatomy']>(key: K, value: CharacterState['anatomy'][K]) =>
+    onChange({ ...character, anatomy: { ...character.anatomy, [key]: value } });
 
   return (
     <section className="panel makehuman-editor">
@@ -98,7 +101,46 @@ export default function CharacterControls({ character, onChange, onReset }: Char
               </div>
             </div>
           )}
-          {character.lane !== 'alien' ? <NativeMakeHumanControls character={character} onChange={onChange} /> :
+          {character.lane !== 'alien' && (
+            <div className="mh-macro-panel">
+              <div className="mh-pane-heading"><strong>Anatomy</strong><span>Optional external anatomy for character-production work.</span></div>
+              <div className="segmented-control">
+                {(['off','simplified','detailed'] as AnatomyMode[]).map((mode)=>(
+                  <button key={mode} type="button" className={character.anatomy.mode===mode?'active':''}
+                    onClick={()=>setAnatomy('mode',mode)}>{mode}</button>
+                ))}
+              </div>
+              {character.anatomy.mode!=='off' && <div className="control-stack">
+                {character.lane==='male' ? <>
+                  {([
+                    ['penisLength','Penis length'],
+                    ['penisGirth','Penis circumference'],
+                    ['testicleSize','Testicle size']
+                  ] as Array<[keyof CharacterState['anatomy'],string]>).map(([key,label])=>(
+                    <label className="range-control" key={key}>
+                      <span><strong>{label}</strong><output>{Number(character.anatomy[key]).toFixed(2)}</output></span>
+                      <input type="range" min="0" max="1" step="0.01" value={Number(character.anatomy[key])}
+                        onChange={(event)=>setAnatomy(key,Number(event.target.value) as never)} />
+                    </label>
+                  ))}
+                </> : <>
+                  {([
+                    ['vulvaWidth','Vulva width'],
+                    ['labiaMajora','Outer lips · labia majora'],
+                    ['labiaMinora','Inner lips · labia minora'],
+                    ['clitoralSize','Clitoral prominence']
+                  ] as Array<[keyof CharacterState['anatomy'],string]>).map(([key,label])=>(
+                    <label className="range-control" key={key}>
+                      <span><strong>{label}</strong><output>{Number(character.anatomy[key]).toFixed(2)}</output></span>
+                      <input type="range" min="0" max="1" step="0.01" value={Number(character.anatomy[key])}
+                        onChange={(event)=>setAnatomy(key,Number(event.target.value) as never)} />
+                    </label>
+                  ))}
+                </>}
+              </div>}
+            </div>
+          )}
+                    {character.lane !== 'alien' ? <NativeMakeHumanControls character={character} onChange={onChange} /> :
             <div className="mh-native-empty">Alien modeling remains on the custom topology/morph lane.</div>}
         </div>
       )}
@@ -107,6 +149,24 @@ export default function CharacterControls({ character, onChange, onReset }: Char
         <div className="mh-tab-body">
           <div className="toggle-row"><label><input type="checkbox" checked={character.appearance.hairEnabled}
             onChange={(event) => updateAppearance('hairEnabled', event.target.checked)} /><span>Hair enabled</span></label></div>
+          {character.appearance.hairEnabled && <div className="control-stack surface-controls">
+            <label className="select-control"><span>Hair style</span>
+              <select value={character.appearance.hairStyle}
+                onChange={(event)=>updateAppearance('hairStyle',event.target.value as AppearanceState['hairStyle'])}>
+                <option value="buzz">Buzz</option>
+                <option value="short">Short</option>
+                <option value="sidePart">Side part</option>
+                <option value="bob">Bob</option>
+                <option value="long">Long</option>
+              </select>
+            </label>
+            <label className="range-control"><span><strong>Hair length</strong><output>{character.appearance.hairLength.toFixed(2)}</output></span>
+              <input type="range" min="0" max="1" step="0.01" value={character.appearance.hairLength}
+                onChange={(event)=>updateAppearance('hairLength',Number(event.target.value))} /></label>
+            <label className="range-control"><span><strong>Hair volume</strong><output>{character.appearance.hairVolume.toFixed(2)}</output></span>
+              <input type="range" min="0" max="1" step="0.01" value={character.appearance.hairVolume}
+                onChange={(event)=>updateAppearance('hairVolume',Number(event.target.value))} /></label>
+          </div>}
           <div className="color-grid">{COLORS.map((color) => (
             <label className="color-control" key={color.key}><span>{color.label}</span>
               <input type="color" value={character.appearance[color.key]} onChange={(event) => updateAppearance(color.key, event.target.value)} /></label>
