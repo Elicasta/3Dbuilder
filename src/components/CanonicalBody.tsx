@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { BufferGeometry, Float32BufferAttribute } from 'three';
 import type { CharacterState } from '../types/character';
-import type { PoseState } from '../lib/pose';
+import { POSES, type PoseState } from '../lib/pose';
 
 type Ring = { y: number; rx: number; rz: number };
 type ArmRing = { x: number; y: number; ry: number; rz: number };
@@ -14,7 +14,7 @@ function connectRings(indices: number[], a: number, b: number, segments: number,
   }
 }
 
-function buildBody(character: CharacterState, pose: PoseState) {
+export function buildCanonicalGeometry(character: CharacterState, pose: PoseState = POSES.tPose) {
   const { morphs: m } = character;
   const h = m.height;
   const build = m.build;
@@ -189,7 +189,7 @@ function buildBody(character: CharacterState, pose: PoseState) {
 }
 
 export default function CanonicalBody({character,pose}:{character:CharacterState;pose:PoseState}){
-  const geometry=useMemo(()=>buildBody(character,pose),[character,pose]);
+  const geometry=useMemo(()=>buildCanonicalGeometry(character,pose),[character,pose]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh geometry={geometry} castShadow receiveShadow>
     <meshStandardMaterial color={character.appearance.skin} roughness={character.appearance.skinRoughness} metalness={0.02}/>
