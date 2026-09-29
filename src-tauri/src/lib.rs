@@ -390,6 +390,15 @@ fn prepare_engine_runtime(app: tauri::AppHandle, id: String) -> Result<String, S
         runtime_requirements.push("onnxruntime".to_string());
     }
 
+    // TripoSR pins trimesh 4.0.5. Its GLB exporter calls ndarray.ptp(), which
+    // NumPy 2 removed from ndarray. Keep NumPy on the compatible 1.x ABI for
+    // this isolated research runtime.
+    runtime_requirements.retain(|line| {
+        let lower = line.to_ascii_lowercase();
+        !lower.starts_with("numpy")
+    });
+    runtime_requirements.push("numpy>=1.24,<2".to_string());
+
     let runtime_requirements_path = root.join("triposr-runtime-requirements.txt");
     fs::write(
         &runtime_requirements_path,
