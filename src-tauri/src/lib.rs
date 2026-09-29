@@ -604,20 +604,12 @@ fn open_in_blender(app: tauri::AppHandle, mesh_path: String) -> Result<(), Strin
         .unwrap_or("")
         .to_ascii_lowercase();
 
-    let escaped = mesh
-        .to_string_lossy()
-        .replace('\\\\', "\\\\")
-        .replace('\\'', "\\\\'");
-
+    // Pass the path to Python through an environment variable instead of
+    // interpolating it into Python source. This avoids Rust/Python quoting
+    // collisions and handles spaces/apostrophes in paths safely.
     let importer = match extension.as_str() {
-        "glb" | "gltf" => format!(
-            "import bpy; bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False); bpy.ops.import_scene.gltf(filepath='{}')",
-            escaped
-        ),
-        "obj" => format!(
-            "import bpy; bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False); bpy.ops.wm.obj_import(filepath='{}')",
-            escaped
-        ),
+        "glb" | "gltf" => "import bpy, os; bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False); bpy.ops.import_scene.gltf(filepath=os.environ['THREEDBUILDER_MESH'])",
+        "obj" => "import bpy, os; bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False); bpy.ops.wm.obj_import(filepath=os.environ['THREEDBUILDER_MESH'])",
         _ => return Err(format!("Blender import is not wired for .{extension} files.")),
     };
 
