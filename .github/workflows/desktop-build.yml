@@ -1,0 +1,48 @@
+name: Desktop Builds
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "package.json"
+      - "tsconfig.json"
+      - "vite.config.ts"
+      - ".github/workflows/desktop-build.yml"
+
+jobs:
+  macos:
+    name: macOS Universal
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Install frontend dependencies
+        run: npm install
+      - name: Build universal macOS app
+        uses: tauri-apps/tauri-action@v0
+        with:
+          args: --target universal-apple-darwin
+
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Install frontend dependencies
+        run: npm install
+      - name: Build Windows app
+        uses: tauri-apps/tauri-action@v0
