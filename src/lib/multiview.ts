@@ -202,7 +202,8 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
 
   // Semantic landmark bands. These deliberately sample the central connected
   // silhouette so horizontal T-pose arms do not become torso width.
-  const headWidth = nearestRowWidth(mask, SIZE, rowAt(0.12), centerX);
+  const headWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.12), centerX, bodyHeight, 0.018);
+  const jawWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.205), centerX, bodyHeight, 0.015);
   const shoulderWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.29), centerX, bodyHeight, 0.055);
   const chestWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.39), centerX, bodyHeight);
   const waistWidth = anatomicalWidth(mask, SIZE, SIZE, rowAt(0.50), centerX, bodyHeight);
@@ -236,6 +237,7 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
     height: bodyHeight,
     foregroundConfidence: clamp(fillRatio / 0.36, 0, 1),
     headWidth: headWidth ? headWidth / bodyHeight : null,
+    jawWidth: jawWidth ? jawWidth / bodyHeight : null,
     shoulderWidth: shoulderWidth ? shoulderWidth / bodyHeight : null,
     chestWidth: chestWidth ? chestWidth / bodyHeight : null,
     waistWidth: waistWidth ? waistWidth / bodyHeight : null,
@@ -277,6 +279,7 @@ export async function analyzeMultiView(
   const waist = average(frontBack.map((view) => view.waistWidth));
   const hips = average(frontBack.map((view) => view.hipWidth));
   const head = average(frontBack.map((view) => view.headWidth));
+  const jaw = average(frontBack.map((view) => view.jawWidth));
   const armSpan = average(frontBack.map((view) => view.armSpan));
   const legSplit = average(frontBack.map((view) => view.legSplitY));
 
@@ -303,6 +306,8 @@ export async function analyzeMultiView(
     hips: mapRatio(hips, 0.18, 0.84, 1.16),
     hipDepth: mapRatio(sideHips, 0.135, 0.82, 1.18),
     headScale: mapRatio(head, 0.125, 0.9, 1.12),
+    faceWidth: mapRatio(head, 0.125, 0.90, 1.12),
+    jawWidth: mapRatio(jaw, 0.105, 0.86, 1.16),
     // Side head depth is intentionally conservative because hair, nose and
     // ears contaminate the silhouette. faceDepth maps to head-scale-depth.
     faceDepth: sideHead ? clamp(mapRatio(sideHead, 0.13, 0.94, 1.08), 0.94, 1.08) : 1,
