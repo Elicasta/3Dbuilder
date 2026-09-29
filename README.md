@@ -18,7 +18,7 @@ V1 is being built as a real builder from the start:
 - Tauri desktop shell
 - macOS + Windows build workflow
 
-The AI reconstruction stage is the next engine layer. The current base character is procedural so the editor, data model, wardrobe system, native shell, and 3D viewport can be built and tested before we connect image-to-3D inference.
+The production human path now uses MakeHuman hm08 as the stable canonical topology. The earlier procedural cage remains only as a fallback/test fixture and the current alien prototype.
 
 ## Stack
 
@@ -99,7 +99,7 @@ GLB / FBX / BLEND
 Implemented foundation:
 
 - Tauri desktop app structure
-- live orbitable 3D procedural character
+- live orbitable MakeHuman hm08 production human with procedural fallback
 - lane-specific body and proportion controls
 - skin / eye / hair / lip / marking controls and surface parameters
 - modular top / bottom / footwear / outerwear / headwear / eyewear / gloves / belt / gear slots
@@ -125,9 +125,11 @@ Research engine layer now included:
 
 See `docs/ENGINE_STACK.md`.
 
-Next engine milestone:
+Current production milestone:
 
-**front / side / back reference images → multiple reconstruction candidates → canonical fitted base mesh**
+**one MakeHuman canonical character → deterministic multi-view fit → native MakeHuman rig/weights → Blender/GLB/FBX asset contract**
+
+See `docs/PRODUCTION_CHARACTER_MILESTONE.md`.
 
 The first AI lane is now wired end-to-end through TripoSR. On macOS the adapter automatically uses the Apple-Silicon-oriented TripoSR fork; Windows uses the official source. The multi-view fusion and canonical fitting layer is next.
 
