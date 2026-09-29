@@ -5,7 +5,8 @@ import { canonicalJoints } from './canonicalRig';
 import { phase3ExportRecipe } from './canonicalExport';
 import { productionSkinWeights } from './productionSkin';
 import { evaluateMakeHumanGeometry, geometryToObj, resolvedMakeHumanTargets } from './makehumanCharacter';
-import { makeHumanBones, makeHumanSkinWeights } from './makehumanRig';\nimport { fittedAssetFromTexts } from './makehumanAsset';
+import { makeHumanBones, makeHumanSkinWeights } from './makehumanRig';
+import { fittedAssetFromTexts } from './makehumanAsset';
 
 export interface MakeHumanAssetStatus {
   installed: boolean;
