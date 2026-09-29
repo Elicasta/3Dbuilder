@@ -5,9 +5,10 @@ import type { MultiViewAnalysis } from '../types/multiview';
 
 interface MultiViewFitPanelProps {
   references: CharacterReferences;
+  onAnalysis?: (analysis: MultiViewAnalysis) => void;
 }
 
-export default function MultiViewFitPanel({ references }: MultiViewFitPanelProps) {
+export default function MultiViewFitPanel({ references, onAnalysis }: MultiViewFitPanelProps) {
   const [busy, setBusy] = useState(false);
   const [analysis, setAnalysis] = useState<MultiViewAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +26,7 @@ export default function MultiViewFitPanel({ references }: MultiViewFitPanelProps
         })
       ]).finally(()=>{if(timer!==undefined)window.clearTimeout(timer)});
       setAnalysis(result);
+      onAnalysis?.(result);
     } catch (reason) {
       setError(String(reason));
     } finally {
