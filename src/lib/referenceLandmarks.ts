@@ -13,8 +13,10 @@ const POSE='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose
 const FACE='https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
 let engines:Promise<{pose:PoseLandmarker;face:FaceLandmarker}>|null=null;
+let engineFailure:string|null=null;
 
 async function getEngines(){
+  if(engineFailure) throw new Error(engineFailure);
   if(!engines) engines=(async()=>{
     const vision=await FilesetResolver.forVisionTasks(WASM);
     const [pose,face]=await Promise.all([
@@ -22,7 +24,11 @@ async function getEngines(){
       FaceLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:FACE},runningMode:'IMAGE',numFaces:1,outputFaceBlendshapes:false,outputFacialTransformationMatrixes:true})
     ]);
     return {pose,face};
-  })();
+  })().catch((error)=>{
+    engines=null;
+    engineFailure=`Local landmark runtime unavailable: ${String(error)}`;
+    throw error;
+  });
   return engines;
 }
 
@@ -81,3 +87,5 @@ export function faceRatios(points:LandmarkPoint[]){
     jawSpan:d(172,397)
   };
 }
+
+export function landmarkRuntimeStatus(){return {ready:Boolean(engines)&&!engineFailure,error:engineFailure};}
