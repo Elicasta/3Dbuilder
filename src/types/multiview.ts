@@ -5,6 +5,7 @@ export interface ViewAnalysis {
   height: number;
   foregroundConfidence: number;
   headWidth: number | null;
+  jawWidth: number | null;
   shoulderWidth: number | null;
   chestWidth: number | null;
   waistWidth: number | null;
