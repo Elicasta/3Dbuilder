@@ -53,7 +53,7 @@ export async function solveIdentityFromReferences(references:CharacterReferences
       const optimized=await Promise.race([
         optimizeProfileFit(baseObjText,seed,{front:analysis.front,side:analysis.side}),
         new Promise<never>((_,reject)=>{
-          timer=window.setTimeout(()=>reject(new Error('Profile optimizer timed out')),15000);
+          timer=globalThis.setTimeout(()=>reject(new Error('Profile optimizer timed out')),15000);
         })
       ]);
       morphPatch={...morphPatch,...optimized.patch};
@@ -63,7 +63,7 @@ export async function solveIdentityFromReferences(references:CharacterReferences
       // must never prevent Build Character from completing.
       optimization=null;modelLoss=.25;
     }finally{
-      if(timer!==undefined)window.clearTimeout(timer);
+      if(timer!==undefined)globalThis.clearTimeout(timer);
     }
   }
   const observationLoss=1-analysis.fitQuality;
