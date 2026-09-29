@@ -36,11 +36,13 @@ const SURFACE_CONTROLS = [
   { key: 'markingsOpacity', label: 'Markings', min: 0, max: 1 }
 ] as const;
 
-const MACROS: Array<{ key: keyof MakeHumanMacroState; label: string }> = [
+const MACROS: Array<{ key: keyof MakeHumanMacroState; label: string; femaleOnly?: boolean }> = [
   { key: 'age', label: 'Age' },
   { key: 'muscle', label: 'Muscle' },
   { key: 'weight', label: 'Weight' },
-  { key: 'proportions', label: 'Proportions' }
+  { key: 'proportions', label: 'Proportions' },
+  { key: 'breastSize', label: 'Breast size', femaleOnly: true },
+  { key: 'breastFirmness', label: 'Breast firmness', femaleOnly: true }
 ];
 
 export default function CharacterControls({ character, onChange, onReset }: CharacterControlsProps) {
@@ -81,7 +83,7 @@ export default function CharacterControls({ character, onChange, onReset }: Char
             <div className="mh-macro-panel">
               <div className="mh-pane-heading"><strong>Main</strong><span>Native MakeHuman phenotype dependencies.</span></div>
               <div className="control-stack">
-                {MACROS.map(({ key, label }) => (
+                {MACROS.filter(({femaleOnly})=>!femaleOnly||character.lane==='female').map(({ key, label }) => (
                   <label className="range-control" key={key}>
                     <span><strong>{label}</strong><output>{character.macro[key].toFixed(2)}</output></span>
                     <input type="range" min="0" max="1" step="0.01" value={character.macro[key]}
