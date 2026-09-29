@@ -144,10 +144,15 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
   const rowAt = (fraction: number) =>
     clamp(Math.round(minY + bodyHeight * fraction), minY, maxY);
 
+  // Semantic landmark bands. These deliberately sample the central connected
+  // silhouette so horizontal T-pose arms do not become torso width.
   const headWidth = nearestRowWidth(mask, SIZE, rowAt(0.12), centerX);
-  const chestWidth = nearestRowWidth(mask, SIZE, rowAt(0.4), centerX);
-  const waistWidth = nearestRowWidth(mask, SIZE, rowAt(0.52), centerX);
-  const hipWidth = nearestRowWidth(mask, SIZE, rowAt(0.61), centerX);
+  const shoulderWidth = nearestRowWidth(mask, SIZE, rowAt(0.29), centerX);
+  const chestWidth = nearestRowWidth(mask, SIZE, rowAt(0.39), centerX);
+  const waistWidth = nearestRowWidth(mask, SIZE, rowAt(0.50), centerX);
+  const hipWidth = nearestRowWidth(mask, SIZE, rowAt(0.59), centerX);
+  const kneeWidth = nearestRowWidth(mask, SIZE, rowAt(0.78), centerX);
+  const ankleWidth = nearestRowWidth(mask, SIZE, rowAt(0.94), centerX);
 
   let legSplitY: number | null = null;
   for (let y = rowAt(0.52); y < rowAt(0.82); y += 1) {
@@ -170,9 +175,12 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
     height: bodyHeight,
     foregroundConfidence: clamp(fillRatio / 0.36, 0, 1),
     headWidth: headWidth ? headWidth / bodyHeight : null,
+    shoulderWidth: shoulderWidth ? shoulderWidth / bodyHeight : null,
     chestWidth: chestWidth ? chestWidth / bodyHeight : null,
     waistWidth: waistWidth ? waistWidth / bodyHeight : null,
     hipWidth: hipWidth ? hipWidth / bodyHeight : null,
+    kneeWidth: kneeWidth ? kneeWidth / bodyHeight : null,
+    ankleWidth: ankleWidth ? ankleWidth / bodyHeight : null,
     legSplitY: legSplitY ? (legSplitY - minY) / bodyHeight : null,
     armSpan: bodyWidth / bodyHeight
   };
@@ -199,6 +207,7 @@ export async function analyzeMultiView(
       : fallback;
   };
 
+  const shoulders = average(frontBack.map((view) => view.shoulderWidth));
   const chest = average(frontBack.map((view) => view.chestWidth));
   const waist = average(frontBack.map((view) => view.waistWidth));
   const hips = average(frontBack.map((view) => view.hipWidth));
@@ -216,7 +225,7 @@ export async function analyzeMultiView(
   // Keep the editable canonical body human while the AI candidate supplies
   // higher-frequency shape evidence in the viewport.
   const morphPatch = {
-    shoulders: mapRatio(chest, 0.205, 0.84, 1.16),
+    shoulders: mapRatio(shoulders, 0.225, 0.86, 1.14),
     chest: mapRatio(chest, 0.205, 0.84, 1.16),
     chestDepth: mapRatio(sideChest, 0.13, 0.82, 1.18),
     waist: mapRatio(waist, 0.15, 0.84, 1.16),
@@ -239,6 +248,18 @@ export async function analyzeMultiView(
       available.length
     : 0;
 
+  // Fit quality is intentionally separate from mask confidence. It rewards
+  // multiple views and front/back agreement, and never claims pixel-perfect fit.
+  const pairAgreement = (key: 'headWidth' | 'shoulderWidth' | 'chestWidth' | 'waistWidth' | 'hipWidth') => {
+    if (!front || !back || front[key] === null || back[key] === null) return 0.55;
+    const a = front[key] as number, b = back[key] as number;
+    return clamp(1 - Math.abs(a - b) / Math.max(a, b, 0.001), 0, 1);
+  };
+  const agreement = (['headWidth','shoulderWidth','chestWidth','waistWidth','hipWidth'] as const)
+    .reduce((sum, key) => sum + pairAgreement(key), 0) / 5;
+  const viewCoverage = available.length / 3;
+  const fitQuality = clamp(confidence * 0.35 + agreement * 0.35 + viewCoverage * 0.30, 0, 0.92);
+
   const notes: string[] = [];
   if (!front) notes.push('Front view missing.');
   if (!side) notes.push('Side view missing, depth morphs remain approximate.');
@@ -254,6 +275,7 @@ export async function analyzeMultiView(
     back,
     morphPatch,
     confidence,
+    fitQuality,
     notes
   };
 }
