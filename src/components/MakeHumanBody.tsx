@@ -4,6 +4,7 @@ import type { CharacterState } from '../types/character';
 import { getMakeHumanAssetBundle } from '../lib/desktop';
 import { fittedAssetFromTexts, normalizeAssetWithBody } from '../lib/makehumanAsset';
 import { evaluateMakeHumanGeometry, normalizeMakeHumanForViewport } from '../lib/makehumanCharacter';
+import { parseMakeHumanMaterial } from '../lib/makehumanMaterial';
 import { parseMakeHumanObj } from '../lib/makehumanObj';
 
 interface FittedAsset { path: string; geometry: BufferGeometry; materialText: string | null }
@@ -43,11 +44,15 @@ export default function MakeHumanBody({ objText, character }: { objText: string;
       </mesh>
       {assets.map((asset)=>{
         const lower=asset.path.toLowerCase();
-        const color=lower.includes('hair')||lower.includes('eyebrow') ? character.appearance.hair :
+        const material=asset.materialText ? parseMakeHumanMaterial(asset.materialText) : null;
+        const fallback=lower.includes('hair')||lower.includes('eyebrow') ? character.appearance.hair :
           lower.includes('eye') ? character.appearance.sclera :
           lower.includes('teeth') ? '#e7e1d7' : character.appearance.shirt;
         return <mesh key={asset.path} geometry={asset.geometry} castShadow receiveShadow>
-          <meshStandardMaterial color={color} roughness={lower.includes('eye')?0.28:0.72} metalness={0.01}/>
+          <meshStandardMaterial color={material?.diffuseColor ?? fallback}
+            roughness={material?.roughness ?? (lower.includes('eye')?0.28:0.72)}
+            metalness={0.01} transparent={material?.transparent || (material?.opacity ?? 1)<1}
+            opacity={material?.opacity ?? 1}/>
         </mesh>;
       })}
     </group>
