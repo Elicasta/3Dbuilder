@@ -13,7 +13,7 @@ describe('MakeHuman production skinning',()=>{
     r.mesh.updateMatrixWorld(true);
     const bind=new Vector3();r.mesh.applyBoneTransform(2,bind.fromBufferAttribute(g.getAttribute('position'),2));
     expect(bind.x).toBeCloseTo(.2);expect(bind.y).toBeCloseTo(1);expect(bind.z).toBeCloseTo(0);
-    r.geometry?.dispose?.();
+    g.dispose();
   });
   it('pose battery never writes non-finite bone transforms',()=>{
     const g=new BufferGeometry();g.setAttribute('position',new Float32BufferAttribute([0,0,0,0,1,0],3));
