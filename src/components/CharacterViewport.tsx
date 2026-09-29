@@ -4,6 +4,7 @@ import { Box3, BufferGeometry, Float32BufferAttribute, Group, Vector3 } from 'th
 import { Canvas } from '@react-three/fiber';
 import type { CharacterState } from '../types/character';
 import CanonicalBody from './CanonicalBody';
+import RigOverlay from './RigOverlay';
 
 function Surface({
   color,
@@ -258,7 +259,7 @@ function CharacterMesh({ character }: { character: CharacterState }) {
   );
 }
 
-type ViewMode = 'canonical' | 'ai' | 'overlay';
+type ViewMode = 'canonical' | 'rig' | 'ai' | 'overlay';
 
 function AlignedAICandidate({ url, character, overlay = false }: { url: string; character: CharacterState; overlay?: boolean }) {
   const gltf = useGLTF(url);
@@ -353,9 +354,9 @@ export default function CharacterViewport({
       <div className="panel-header viewport-header">
         <div><h2>Live 3D Builder</h2><p>{character.lane} · {character.style} · {character.renderTarget}</p></div>
         <div className="viewport-mode-switch">
-          {(['canonical', 'ai', 'overlay'] as ViewMode[]).map((mode) => (
-            <button key={mode} type="button" className={viewMode === mode ? 'active' : ''} disabled={!aiMeshUrl && mode !== 'canonical'} onClick={() => onViewModeChange?.(mode)}>
-              {mode === 'canonical' ? 'Canonical' : mode === 'ai' ? 'AI Candidate' : 'Overlay'}
+          {(['canonical', 'rig', 'ai', 'overlay'] as ViewMode[]).map((mode) => (
+            <button key={mode} type="button" className={viewMode === mode ? 'active' : ''} disabled={!aiMeshUrl && (mode === 'ai' || mode === 'overlay')} onClick={() => onViewModeChange?.(mode)}>
+              {mode === 'canonical' ? 'Canonical' : mode === 'rig' ? 'Rig' : mode === 'ai' ? 'AI Candidate' : 'Overlay'}
             </button>
           ))}
           <span className="live-badge">LIVE</span>
@@ -367,7 +368,8 @@ export default function CharacterViewport({
           <ambientLight intensity={1.2} />
           <directionalLight castShadow intensity={3.1} position={[4, 8, 5]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
           <directionalLight intensity={1.25} position={[-5, 3, -4]} />
-          {(viewMode === 'canonical' || viewMode === 'overlay') && <CharacterMesh character={character} />}
+          {(viewMode === 'canonical' || viewMode === 'rig' || viewMode === 'overlay') && <CharacterMesh character={character} />}
+          {viewMode === 'rig' && <RigOverlay character={character} />}
           {aiMeshUrl && (viewMode === 'ai' || viewMode === 'overlay') && <Suspense fallback={null}><AlignedAICandidate url={aiMeshUrl} character={character} overlay={viewMode === 'overlay'} /></Suspense>}
           <gridHelper args={[18, 18, '#303846', '#202630']} position={[0, -2.05, 0]} />
           <ContactShadows position={[0, -2.03, 0]} opacity={0.38} scale={10} blur={2.5} far={6} />
