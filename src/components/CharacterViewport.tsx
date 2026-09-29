@@ -1,4 +1,6 @@
-import { ContactShadows, OrbitControls } from '@react-three/drei';
+import { ContactShadows, OrbitControls, useGLTF } from '@react-three/drei';
+import { Suspense, useEffect, useMemo } from 'react';
+import { Box3, Group, Vector3 } from 'three';
 import { Canvas } from '@react-three/fiber';
 import type { CharacterState } from '../types/character';
 
@@ -422,7 +424,54 @@ function CharacterMesh({ character }: { character: CharacterState }) {
   );
 }
 
-export default function CharacterViewport({ character }: { character: CharacterState }) {
+type ViewMode = 'canonical' | 'ai' | 'overlay';
+
+function AICandidate({ url, overlay = false }: { url: string; overlay?: boolean }) {
+  const gltf = useGLTF(url);
+  const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
+
+  useEffect(() => {
+    const bounds = new Box3().setFromObject(scene);
+    const size = bounds.getSize(new Vector3());
+    const center = bounds.getCenter(new Vector3());
+    const targetHeight = 5.15;
+    const scale = size.y > 0 ? targetHeight / size.y : 1;
+
+    scene.position.set(-center.x * scale, -center.y * scale + 0.48, -center.z * scale);
+    scene.scale.setScalar(scale);
+
+    scene.traverse((object) => {
+      const mesh = object as unknown as { isMesh?: boolean; castShadow?: boolean; receiveShadow?: boolean; material?: any };
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      if (overlay && mesh.material) {
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        materials.forEach((material: any) => {
+          material = material.clone();
+          material.transparent = true;
+          material.opacity = 0.48;
+          material.depthWrite = false;
+        });
+        mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
+      }
+    });
+  }, [scene, overlay]);
+
+  return <primitive object={scene as Group} />;
+}
+
+export default function CharacterViewport({
+  character,
+  aiMeshUrl = null,
+  viewMode = 'canonical',
+  onViewModeChange
+}: {
+  character: CharacterState;
+  aiMeshUrl?: string | null;
+  viewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
+}) {
   return (
     <section className="panel viewport-panel">
       <div className="panel-header viewport-header">
@@ -432,7 +481,20 @@ export default function CharacterViewport({ character }: { character: CharacterS
             {character.lane} · {character.style} · {character.renderTarget}
           </p>
         </div>
-        <span className="live-badge">LIVE</span>
+        <div className="viewport-mode-switch">
+          {(['canonical', 'ai', 'overlay'] as ViewMode[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className={viewMode === mode ? 'active' : ''}
+              disabled={!aiMeshUrl && mode !== 'canonical'}
+              onClick={() => onViewModeChange?.(mode)}
+            >
+              {mode === 'canonical' ? 'Canonical' : mode === 'ai' ? 'AI Candidate' : 'Overlay'}
+            </button>
+          ))}
+          <span className="live-badge">LIVE</span>
+        </div>
       </div>
 
       <div className="viewport-canvas">
@@ -447,7 +509,12 @@ export default function CharacterViewport({ character }: { character: CharacterS
             shadow-mapSize-height={1024}
           />
           <directionalLight intensity={1.25} position={[-5, 3, -4]} />
-          <CharacterMesh character={character} />
+          {(viewMode === 'canonical' || viewMode === 'overlay') && <CharacterMesh character={character} />}
+          {aiMeshUrl && (viewMode === 'ai' || viewMode === 'overlay') && (
+            <Suspense fallback={null}>
+              <AICandidate url={aiMeshUrl} overlay={viewMode === 'overlay'} />
+            </Suspense>
+          )}
           <gridHelper args={[18, 18, '#303846', '#202630']} position={[0, -2.05, 0]} />
           <ContactShadows position={[0, -2.03, 0]} opacity={0.38} scale={10} blur={2.5} far={6} />
           <OrbitControls
