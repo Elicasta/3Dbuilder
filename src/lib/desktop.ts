@@ -5,7 +5,7 @@ import { canonicalJoints } from './canonicalRig';
 import { phase3ExportRecipe } from './canonicalExport';
 import { productionSkinWeights } from './productionSkin';
 import { evaluateMakeHumanGeometry, geometryToObj, resolvedMakeHumanTargets } from './makehumanCharacter';
-import { makeHumanBones, makeHumanSkinWeights } from './makehumanRig';
+import { makeHumanBones, makeHumanSkinWeights } from './makehumanRig';\nimport { fittedAssetFromTexts } from './makehumanAsset';
 
 export interface MakeHumanAssetStatus {
   installed: boolean;
@@ -126,7 +126,7 @@ export async function saveCharacterRecipe(character: CharacterState): Promise<st
     }finally{evaluated.geometry.dispose()}
   }
   return invoke<string>('save_recipe',{name:character.name,recipe:JSON.stringify({
-    schema:'3dbuilder.character.v4',phase:4,coordinateSystem:'Y-up / meters / T-pose',
+    schema:'3dbuilder.character.v5',phase:5,coordinateSystem:'Y-up / meters / T-pose',
     canonical:makeHuman?{family:'makehuman-hm08-v1',morphEngine:'makehuman-targets-v1',targets:makeHumanTargets}:{family:'procedural-cage-v1',morphEngine:'procedural',targets:[]},
     topology,
     materials:{body:{uvSet:'UV0',textureResolution:character.renderTarget==='unreal'?4096:2048,pbrSlots:['BaseColor','Normal','Roughness','Metallic','AO'],skin:{baseColor:character.appearance.skin,secondary:character.appearance.skinSecondary,roughness:character.appearance.skinRoughness,subsurfaceIntent:character.appearance.skinSubsurface}},separateObjects:['eyes','teeth','tongue','hair','wardrobe']},
@@ -142,18 +142,60 @@ export async function openCanonicalInBlender(character: CharacterState): Promise
     return invoke<void>('open_character_in_blender', {
       name: character.name,
       objText: canonicalObj(character),
-      recipe: JSON.stringify(phase3ExportRecipe(character))
+      recipe: JSON.stringify(phase3ExportRecipe(character)),
+      assets: []
     });
   }
 
   const objText = await getMakeHumanBaseObj();
   const evaluated = await evaluateMakeHumanGeometry(objText, character);
-  const productionObj = geometryToObj(evaluated.geometry, character.name || 'MakeHumanBody');
+  const productionObj = geometryToObj(evaluated.geometry, character.name || 'CharacterBody');
+
+  let selectedAssets = [...(character.equippedAssets ?? [])];
+  const isHair = (path: string) => {
+    const lower = path.toLowerCase();
+    return (lower.includes('/hair/') || lower.includes('hair')) && !lower.includes('eyebrow') && !lower.includes('brow');
+  };
+  const isAnatomy = (path: string) => /genital|penis|vulva|vagina|labia/i.test(path);
+
+  if (!character.appearance.hairEnabled) {
+    selectedAssets = selectedAssets.filter((path) => !isHair(path));
+  }
+
+  if (character.anatomy.mode === 'off') {
+    selectedAssets = selectedAssets.filter((path) => !isAnatomy(path));
+  } else if (character.anatomy.mode === 'detailed' && !selectedAssets.some(isAnatomy)) {
+    try {
+      const catalog = await getMakeHumanAssetCatalog();
+      const installed = catalog.find((item) => item.kind !== 'material' && isAnatomy(item.relativePath));
+      if (installed) selectedAssets.push(installed.relativePath);
+    } catch {
+      // Missing anatomy assets stay absent. Do not invent export geometry.
+    }
+  }
+
+  const assets = await Promise.all(
+    selectedAssets.map(async (path, index) => {
+      const bundle = await getMakeHumanAssetBundle(path);
+      const geometry = fittedAssetFromTexts(bundle.definitionText, bundle.objText, evaluated.geometry);
+      try {
+        return {
+          name: bundle.relativePath.split('/').pop()?.replace(/\.[^.]+$/, '') || `asset-${index + 1}`,
+          kind: isHair(path) ? 'hair' : isAnatomy(path) ? 'anatomy' : 'wardrobe',
+          sourcePath: path,
+          objText: geometryToObj(geometry, `CharacterAsset_${index + 1}`)
+        };
+      } finally {
+        geometry.dispose();
+      }
+    })
+  );
 
   const [skeletonText, weightText] = await Promise.all([
     getMakeHumanRigText('default.mhskel'),
     getMakeHumanRigText('default_weights.mhw')
   ]);
+
   const rig = {
     source: 'makehuman-default-v110',
     bones: makeHumanBones(evaluated.geometry, skeletonText),
@@ -162,10 +204,11 @@ export async function openCanonicalInBlender(character: CharacterState): Promise
       evaluated.geometry.getAttribute('position').count
     )
   };
-  evaluated.geometry.dispose();
 
   const recipe = {
     ...phase3ExportRecipe(character),
+    schema: '3dbuilder.character.v5',
+    phase: 5,
     canonical: {
       family: 'makehuman-hm08-v1',
       morphEngine: 'makehuman-targets-v1',
@@ -176,12 +219,18 @@ export async function openCanonicalInBlender(character: CharacterState): Promise
       source: 'MakeHuman hm08 visible body',
       subdivisionReady: false
     },
+    appearance: character.appearance,
+    details: character.details,
+    assets: assets.map(({ objText: _objText, ...asset }) => asset),
     rig
   };
+
+  evaluated.geometry.dispose();
 
   return invoke<void>('open_character_in_blender', {
     name: character.name,
     objText: productionObj,
-    recipe: JSON.stringify(recipe)
+    recipe: JSON.stringify(recipe),
+    assets
   });
 }

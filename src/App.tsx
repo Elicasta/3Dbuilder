@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import CharacterControls from './components/CharacterControls';
+import CharacterStudioPanel from './components/CharacterStudioPanel';
 import EngineLab from './components/EngineLab';
 import MultiViewFitPanel from './components/MultiViewFitPanel';
 import ReferenceUploader from './components/ReferenceUploader';
@@ -10,7 +10,6 @@ import {
   detectBlender,
   getLatestGeneratedMesh,
   getMakeHumanBaseObj,
-  openInBlender,
   openCanonicalInBlender,
   runReconstruction,
   saveCharacterRecipe,
@@ -18,6 +17,7 @@ import {
   type BlenderStatus
 } from './lib/desktop';
 import { applyIdentityFit, solveIdentityFromAnalysis, solveIdentityFromReferences } from './lib/reconstructionFit';
+import type { PosePreset } from './lib/pose';
 import {
   DEFAULT_CHARACTER,
   type CharacterReferences,
@@ -34,302 +34,324 @@ const EMPTY_REFERENCES: CharacterReferences = {
   back: null
 };
 
+type BuildStage = 'idle' | 'analyzing' | 'fitting' | 'evidence' | 'done' | 'error';
+
 export default function App() {
   const [references, setReferences] = useState<CharacterReferences>(EMPTY_REFERENCES);
   const [character, setCharacter] = useState<CharacterState>(DEFAULT_CHARACTER);
-  const [status, setStatus] = useState('Desktop builder ready');
+  const [status, setStatus] = useState('Character studio ready');
   const [blender, setBlender] = useState<BlenderStatus | null>(null);
   const [generatedMesh, setGeneratedMesh] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
-  const [buildStage, setBuildStage] = useState<'idle' | 'fit' | 'ai' | 'done' | 'fallback'>('idle');
+  const [buildStage, setBuildStage] = useState<BuildStage>('idle');
   const [lastFit, setLastFit] = useState<MultiViewAnalysis | null>(null);
   const [lastDiagnostic, setLastDiagnostic] = useState<MultiViewAnalysis | null>(null);
   const [makeHumanObj, setMakeHumanObj] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'canonical' | 'rig' | 'ai' | 'overlay'>('canonical');
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceId>('fit');
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceId>('create');
+  const [posePreset, setPosePreset] = useState<PosePreset>('tPose');
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const [showAiEvidence, setShowAiEvidence] = useState(false);
+  const [showEngines, setShowEngines] = useState(false);
 
   useEffect(() => {
     detectBlender()
       .then(setBlender)
-      .catch(() => {
-        setBlender({ found: false, path: null, platform: 'browser' });
-      });
+      .catch(() => setBlender({ found: false, path: null, platform: 'browser' }));
 
     getLatestGeneratedMesh()
       .then((mesh) => {
         if (mesh) {
           setGeneratedMesh(mesh);
-          setStatus('Previous AI mesh candidate restored. Ready to inspect in Blender.');
+          setStatus('Previous geometry evidence is available for comparison.');
         }
       })
       .catch(() => {
-        // No previous candidate is a normal first-run state.
+        // A missing previous evidence mesh is a normal first-run state.
       });
 
     getMakeHumanBaseObj()
       .then((obj) => {
         setMakeHumanObj(obj);
-        setStatus('MakeHuman hm08 canonical body loaded.');
+        setStatus('Canonical character engine loaded.');
       })
       .catch(() => {
-        // Keep the procedural cage as a resilient fallback until assets install.
+        setStatus('Canonical fallback loaded. Install the character engine assets for full human editing.');
       });
   }, []);
 
   function handleReference(slot: ReferenceSlot, file: File | null) {
     setReferences((current) => ({ ...current, [slot]: file }));
     setLastDiagnostic(null);
+    setLastFit(null);
+    setBuildStage('idle');
     setStatus(file ? `${slot} reference loaded` : `${slot} reference cleared`);
   }
 
-
-
-  function resetBody() {
+  function resetCharacter() {
     setCharacter((current) => {
-      const reset = defaultsForLane(current.lane, current.style, current);
+      const reset = defaultsForLane(current.lane, current.style, {
+        ...DEFAULT_CHARACTER,
+        name: current.name,
+        lane: current.lane,
+        style: current.style
+      });
+
       return {
-        ...current,
-        macro: {
-          age: 0.5,
-          muscle: 0.5,
-          weight: 0.5,
-          proportions: 0.5,
-          breastSize: reset.macro.breastSize,
-          breastFirmness: reset.macro.breastFirmness,
-          african: 1 / 3,
-          asian: 1 / 3,
-          caucasian: 1 / 3
-        },
+        ...reset,
+        name: current.name,
         nativeModifiers: {},
         equippedAssets: [],
-        anatomy: { ...DEFAULT_CHARACTER.anatomy },
-        morphs: reset.morphs,
-        appearance: reset.appearance
+        details: DEFAULT_CHARACTER.details.map((detail) => ({ ...detail })),
+        anatomy: { ...DEFAULT_CHARACTER.anatomy }
       };
     });
-    setStatus('Lane proportions and appearance reset.');
+    setPosePreset('tPose');
+    setShowSkeleton(false);
+    setStatus('Character reset to the current base.');
   }
 
   async function saveRecipe() {
     try {
       const path = await saveCharacterRecipe(character);
-      setStatus(`Recipe saved: ${path}`);
+      setStatus(`Editable character saved: ${path}`);
     } catch (error) {
       setStatus(`Save failed: ${String(error)}`);
-    }
-  }
-
-  async function buildCharacter() {
-    const front = references.front;
-    if (!front) {
-      setStatus('Add a front reference first. Full builds are multi-view whenever side/back are available.');
-      return;
-    }
-
-    setBuilding(true);
-    setBuildStage('fit');
-    setGeneratedMesh(null);
-
-    try {
-      const referenceCount = Object.values(references).filter(Boolean).length;
-
-      if (referenceCount >= 2) {
-        setStatus(`Solving one shared identity from ${referenceCount} views…`);
-        const fit = lastDiagnostic
-          ? await solveIdentityFromAnalysis(lastDiagnostic, makeHumanObj ?? undefined, character)
-          : await solveIdentityFromReferences(references, makeHumanObj ?? undefined, character);
-        setCharacter((current) => applyIdentityFit(current, fit));
-        setLastFit(fit.analysis);
-        setViewMode('canonical');
-        setBuildStage('done');
-        setStatus(
-          `Identity fit complete · loss ${fit.objective.total.toFixed(3)}${fit.optimization ? ` · model ${fit.optimization.initialLoss.toFixed(3)}→${fit.optimization.bestLoss.toFixed(3)} in ${fit.optimization.iterations} passes` : ''}.`
-        );
-        return;
-      }
-
-      setBuildStage('ai');
-      setStatus('Only one reference is available. Running the single-view geometry fallback…');
-      const inputPath = await stageReference(front);
-      const meshPath = await runReconstruction('triposr', inputPath);
-      setGeneratedMesh(meshPath);
-      setViewMode('ai');
-      setBuildStage('done');
-      setStatus('Single-view geometry candidate complete. Add side/back references to build a shared editable identity.');
-    } catch (error) {
-      setBuildStage('fallback');
-      setStatus(`Build failed: ${String(error)}`);
-    } finally {
-      setBuilding(false);
     }
   }
 
   async function openCanonicalCharacter() {
     try {
       await openCanonicalInBlender(character);
-      setStatus('The current hm08 character opened in Blender with its MakeHuman-derived armature and weights.');
+      setStatus('Current character opened in Blender with its armature and weights.');
     } catch (error) {
-      setStatus(`Could not export canonical character: ${String(error)}`);
+      setStatus(`Could not open the character in Blender: ${String(error)}`);
     }
   }
 
-  async function openGeneratedMesh() {
-    if (!generatedMesh) return;
-    try {
-      await openInBlender(generatedMesh);
-      setStatus('Generated mesh opened in Blender.');
-    } catch (error) {
-      setStatus(`Could not open Blender: ${String(error)}`);
+  async function applyReferenceMatch() {
+    const front = references.front;
+    if (!front) {
+      setStatus('Add a front reference first. Side and back views improve the same editable character.');
+      return;
     }
+
+    const referenceCount = Object.values(references).filter(Boolean).length;
+    setBuilding(true);
+    setGeneratedMesh((current) => (referenceCount >= 2 ? current : null));
+    setShowAiEvidence(false);
+
+    try {
+      if (referenceCount >= 2) {
+        setBuildStage('fitting');
+        setStatus(`Fitting ${referenceCount} views to the current editable character…`);
+
+        const fit = lastDiagnostic
+          ? await solveIdentityFromAnalysis(lastDiagnostic, makeHumanObj ?? undefined, character)
+          : await solveIdentityFromReferences(references, makeHumanObj ?? undefined, character);
+
+        setCharacter((current) => applyIdentityFit(current, fit));
+        setLastFit(fit.analysis);
+        setBuildStage('done');
+        setStatus(
+          `Reference match applied · loss ${fit.objective.total.toFixed(3)}${fit.optimization ? ` · ${fit.optimization.initialLoss.toFixed(3)}→${fit.optimization.bestLoss.toFixed(3)} in ${fit.optimization.iterations} passes` : ''}.`
+        );
+        return;
+      }
+
+      setBuildStage('evidence');
+      setStatus('One view cannot reliably define an editable identity. Generating optional geometry evidence instead…');
+      const inputPath = await stageReference(front);
+      const meshPath = await runReconstruction('triposr', inputPath);
+      setGeneratedMesh(meshPath);
+      setShowAiEvidence(true);
+      setBuildStage('done');
+      setStatus('Geometry evidence ready. Add side/back references to apply a shared editable identity match.');
+    } catch (error) {
+      setBuildStage('error');
+      setStatus(`Reference operation failed: ${String(error)}`);
+    } finally {
+      setBuilding(false);
+    }
+  }
+
+  function handleAnalysis(analysis: MultiViewAnalysis) {
+    setLastDiagnostic(analysis);
+    setBuildStage('analyzing');
+    setStatus('Reference diagnostics complete. Apply the match to move the character sliders.');
+    window.setTimeout(() => setBuildStage((current) => (current === 'analyzing' ? 'idle' : current)), 250);
   }
 
   const referenceCount = Object.values(references).filter(Boolean).length;
+  const aiMeshUrl = generatedMesh ? convertFileSrc(generatedMesh) : null;
+  const fitPercent = lastFit ? Math.round(lastFit.fitQuality * 100) : null;
 
   return (
-    <main className="app-shell">
-      <header className="topbar">
+    <main className="app-shell character-studio-shell">
+      <header className="topbar studio-topbar">
         <div className="brand-group">
           <div className="brand-mark">3D</div>
           <div>
-            <span className="eyebrow">Mac + Windows · Character Lab</span>
+            <span className="eyebrow">Character Creator</span>
             <h1>3D Builder</h1>
           </div>
         </div>
 
-        <div className="topbar-actions">
+        <div className="topbar-actions studio-topbar-actions">
           <label className="name-field">
             <span>Character</span>
             <input
               value={character.name}
-              onChange={(event) =>
-                setCharacter({
-                  ...character,
-                  name: event.target.value
-                })
-              }
+              onChange={(event) => setCharacter((current) => ({ ...current, name: event.target.value }))}
             />
           </label>
-
-          <button className="secondary-button" type="button" onClick={saveRecipe}>
-            Save recipe
+          <button className="secondary-button" type="button" onClick={() => void saveRecipe()}>
+            Save
           </button>
-
-          <button className="secondary-button" type="button" onClick={() => void openCanonicalCharacter()}>
-            Open Rigged Character in Blender
-          </button>
-
-          {generatedMesh && (
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => void openGeneratedMesh()}
-            >
-              Open AI mesh in Blender
-            </button>
-          )}
-
           <button
-            className="primary-button"
+            className={showEngines ? 'secondary-button active-tool' : 'secondary-button'}
             type="button"
-            disabled={building}
-            onClick={() => void buildCharacter()}
+            onClick={() => setShowEngines((value) => !value)}
           >
-            {building ? 'Building…' : referenceCount === 3 ? 'Build 3-View Character' : 'Build Character'}
+            Character engines
           </button>
         </div>
       </header>
 
       <WorkspaceNav value={workspaceMode} onChange={setWorkspaceMode} />
 
-      <div className="status-bar">
-        <span className="status-dot" />
+      <div className="status-bar studio-status-bar">
+        <span className={buildStage === 'error' ? 'status-dot error' : building ? 'status-dot busy' : 'status-dot'} />
         <span>{status}</span>
-        {building && <span className="phase-chip">{buildStage === 'fit' ? 'Fitting references' : 'Reconstructing AI mesh'}</span>}
+        {building && (
+          <span className="phase-chip">
+            {buildStage === 'fitting' ? 'Applying reference match' : buildStage === 'evidence' ? 'Generating evidence' : 'Working'}
+          </span>
+        )}
         <span className="status-spacer" />
         <span>{character.lane}</span>
         <span>·</span>
         <span>{character.style}</span>
         <span>·</span>
         <span>{referenceCount}/3 refs</span>
-        {lastFit && (
+        {fitPercent !== null && (
           <>
             <span>·</span>
-            <span>refs {Math.round(lastFit.fitQuality * 100)}% · landmarks {Math.round(lastFit.landmarkConfidence * 100)}%</span>
+            <span>match {fitPercent}%</span>
           </>
         )}
         <span>·</span>
-        <span>
-          Blender:{' '}
-          {blender === null
-            ? 'checking'
-            : blender.found
-              ? `found · ${blender.platform}`
-              : `not found · ${blender.platform}`}
-        </span>
+        <span>Blender {blender?.found ? 'ready' : blender === null ? 'checking' : 'not found'}</span>
       </div>
 
-      <section className="workspace">
-        <aside className="inspector">
-          {workspaceMode === 'fit' ? (
+      <section className="workspace studio-workspace">
+        <aside className="inspector studio-inspector">
+          {workspaceMode === 'reference' ? (
             <>
               <ReferenceUploader references={references} onSelect={handleReference} />
-              <MultiViewFitPanel references={references} onAnalysis={setLastDiagnostic} />
-              <section className="panel workflow-note">
-                <div className="panel-header"><div><h2>Matching workflow</h2><p>Use a neutral T-pose when possible. Front and back constrain width; side constrains depth. The result stays editable in Character.</p></div></div>
+              <MultiViewFitPanel references={references} onAnalysis={handleAnalysis} />
+
+              <section className="panel reference-action-panel">
+                <div className="studio-section-heading">
+                  <span className="eyebrow">Apply to character</span>
+                  <h2>Reference match</h2>
+                  <p>
+                    Two or three views solve the same character you edit everywhere else. A single view is kept as optional geometry evidence only.
+                  </p>
+                </div>
+                <div className="reference-action-buttons">
+                  <button
+                    className="primary-button"
+                    type="button"
+                    disabled={building || referenceCount === 0}
+                    onClick={() => void applyReferenceMatch()}
+                  >
+                    {building
+                      ? buildStage === 'fitting'
+                        ? 'Applying match…'
+                        : 'Generating evidence…'
+                      : referenceCount >= 2
+                        ? 'Apply reference match'
+                        : 'Generate geometry evidence'}
+                  </button>
+
+                  {generatedMesh && (
+                    <label className="setting-check compact-setting">
+                      <input
+                        type="checkbox"
+                        checked={showAiEvidence}
+                        onChange={(event) => setShowAiEvidence(event.target.checked)}
+                      />
+                      <span>
+                        <strong>Show geometry evidence</strong>
+                        <small>Overlay the generated mesh without replacing the editable character.</small>
+                      </span>
+                    </label>
+                  )}
+                </div>
               </section>
             </>
-          ) : workspaceMode === 'character' ? (
-            <CharacterControls character={character} onChange={setCharacter} onReset={resetBody} />
           ) : (
-            <section className="panel workflow-note">
-              <div className="panel-header"><div><h2>Engine configuration</h2><p>The canonical MakeHuman system is always the production base. Reconstruction engines only provide additional evidence.</p></div></div>
-            </section>
+            <CharacterStudioPanel
+              mode={workspaceMode}
+              character={character}
+              onChange={setCharacter}
+              onReset={resetCharacter}
+              posePreset={posePreset}
+              onPoseChange={setPosePreset}
+              showSkeleton={showSkeleton}
+              onShowSkeletonChange={setShowSkeleton}
+              onSave={() => void saveRecipe()}
+              onOpenBlender={() => void openCanonicalCharacter()}
+              blenderReady={Boolean(blender?.found)}
+            />
           )}
         </aside>
 
-        <div className="stage">
-          <Suspense fallback={<section className="panel viewport-panel"><div className="panel-header"><div><h2>Live 3D Builder</h2><p>Loading graphics engine…</p></div></div><div className="viewport-canvas" /></section>}>
+        <div className="stage studio-stage">
+          <Suspense
+            fallback={
+              <section className="panel viewport-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>Live character preview</h2>
+                    <p>Loading graphics engine…</p>
+                  </div>
+                </div>
+                <div className="viewport-canvas" />
+              </section>
+            }
+          >
             <CharacterViewport
               character={character}
-              aiMeshUrl={generatedMesh ? convertFileSrc(generatedMesh) : null}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
+              posePreset={posePreset}
+              onPoseChange={setPosePreset}
+              showSkeleton={showSkeleton}
+              aiMeshUrl={aiMeshUrl}
+              showAiEvidence={showAiEvidence}
               makeHumanObj={makeHumanObj}
             />
           </Suspense>
 
-          <section className="panel pipeline-panel">
-            <div className="pipeline-step done">
-              <span>01</span>
-              <div>
-                <strong>Canonical model</strong>
-                <small>hm08 topology · native MakeHuman modifiers</small>
-              </div>
+          <section className="panel flow-status-strip">
+            <div>
+              <span>Character</span>
+              <strong>One canonical editable state</strong>
             </div>
-            <div className={buildStage === 'fit' ? 'pipeline-step active' : referenceCount >= 2 || lastFit ? 'pipeline-step done' : 'pipeline-step next'}>
-              <span>02</span>
-              <div>
-                <strong>Reference fit</strong>
-                <small>Front · side · back → one shared identity objective</small>
-              </div>
+            <div>
+              <span>Reference</span>
+              <strong>{referenceCount >= 2 ? 'Ready to fit' : referenceCount === 1 ? 'Evidence only' : 'Manual editing'}</strong>
             </div>
-            <div className={buildStage === 'ai' ? 'pipeline-step active' : generatedMesh ? 'pipeline-step done' : 'pipeline-step next'}>
-              <span>03</span>
-              <div>
-                <strong>Geometry evidence</strong>
-                <small>Optional neural prior · never replaces editable identity</small>
-              </div>
+            <div>
+              <span>Rig</span>
+              <strong>{character.rigCharacter ? 'Humanoid rig enabled' : 'Rig disabled'}</strong>
             </div>
-            <div className="pipeline-step">
-              <span>04</span>
-              <div>
-                <strong>Rig & export</strong>
-                <small>hm08 mesh · MakeHuman weights → Blender / GLB / FBX</small>
-              </div>
+            <div>
+              <span>Output</span>
+              <strong>{character.renderTarget === 'unreal' ? 'Unreal / FBX intent' : character.renderTarget === 'print' ? 'Print intent' : 'General / GLB intent'}</strong>
             </div>
           </section>
 
-          {workspaceMode === 'engines' && <EngineLab />}
+          {showEngines && <EngineLab />}
         </div>
       </section>
     </main>

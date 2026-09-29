@@ -2,8 +2,19 @@ export type ReferenceSlot = 'front' | 'side' | 'back';
 export type CharacterLane = 'male' | 'female' | 'alien';
 export type CharacterStyle = 'stylized' | 'semiReal' | 'realHuman';
 export type RenderTarget = 'general' | 'unreal' | 'print';
-export type HairStyle = 'buzz' | 'short' | 'sidePart' | 'bob' | 'long';
+export type HairStyle =
+  | 'buzz'
+  | 'short'
+  | 'sidePart'
+  | 'curly'
+  | 'afro'
+  | 'bob'
+  | 'long'
+  | 'ponytail'
+  | 'bun'
+  | 'braids';
 export type AnatomyMode = 'off' | 'simplified' | 'detailed';
+export type DetailLayerType = 'tattoo' | 'scar' | 'mole' | 'makeup';
 
 export interface CharacterReferences {
   front: File | null;
@@ -71,10 +82,36 @@ export interface AppearanceState {
   hairStyle: HairStyle;
   hairLength: number;
   hairVolume: number;
+  hairGloss: number;
+  hairRootDarkening: number;
   skinRoughness: number;
   skinSubsurface: number;
+  skinSpecular: number;
+  skinOiliness: number;
+  poreDetail: number;
   freckles: number;
+  moles: number;
+  scars: number;
+  makeup: number;
+  bodyHair: number;
   markingsOpacity: number;
+  eyePupilScale: number;
+  eyeLimbalRing: number;
+  eyeWetness: number;
+}
+
+export interface DetailLayerState {
+  id: string;
+  type: DetailLayerType;
+  name: string;
+  enabled: boolean;
+  color: string;
+  opacity: number;
+  positionX: number;
+  positionY: number;
+  scale: number;
+  rotation: number;
+  imageDataUrl: string | null;
 }
 
 export type WardrobeSlot =
@@ -137,6 +174,7 @@ export interface CharacterState {
   equippedAssets: string[];
   morphs: BodyMorphs;
   appearance: AppearanceState;
+  details: DetailLayerState[];
   wardrobe: WardrobeState;
   anatomy: AnatomyState;
   rigCharacter: boolean;
@@ -223,11 +261,38 @@ export const DEFAULT_CHARACTER: CharacterState = {
     hairStyle: 'short',
     hairLength: 0.35,
     hairVolume: 0.45,
+    hairGloss: 0.32,
+    hairRootDarkening: 0.22,
     skinRoughness: 0.62,
     skinSubsurface: 0.18,
+    skinSpecular: 0.42,
+    skinOiliness: 0.16,
+    poreDetail: 0.32,
     freckles: 0,
-    markingsOpacity: 0
+    moles: 0.04,
+    scars: 0,
+    makeup: 0,
+    bodyHair: 0.08,
+    markingsOpacity: 0,
+    eyePupilScale: 0.5,
+    eyeLimbalRing: 0.48,
+    eyeWetness: 0.62
   },
+  details: [
+    {
+      id: 'tattoo-1',
+      type: 'tattoo',
+      name: 'Tattoo 1',
+      enabled: false,
+      color: '#171717',
+      opacity: 0.8,
+      positionX: 0,
+      positionY: 0.2,
+      scale: 0.5,
+      rotation: 0,
+      imageDataUrl: null
+    }
+  ],
   wardrobe: {
     shirt: false,
     pants: false,

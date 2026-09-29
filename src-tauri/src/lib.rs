@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -13,6 +13,24 @@ struct BlenderStatus {
     found: bool,
     path: Option<String>,
     platform: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CharacterAssetPayload {
+    name: String,
+    kind: String,
+    source_path: String,
+    obj_text: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CharacterAssetManifestEntry {
+    name: String,
+    kind: String,
+    source_path: String,
+    path: String,
 }
 
 #[derive(Serialize)]
@@ -959,6 +977,7 @@ fn open_character_in_blender(
     name: String,
     obj_text: String,
     recipe: String,
+    assets: Vec<CharacterAssetPayload>,
 ) -> Result<(), String> {
     let blender = blender_path().ok_or_else(|| "Blender was not found.".to_string())?;
     let stamp = SystemTime::now()
@@ -973,6 +992,27 @@ fn open_character_in_blender(
     let json = dir.join("character.json");
     fs::write(&obj, obj_text).map_err(|error| format!("Could not write canonical OBJ: {error}"))?;
     fs::write(&json, recipe).map_err(|error| format!("Could not write character recipe: {error}"))?;
+
+    let assets_dir = dir.join("assets");
+    fs::create_dir_all(&assets_dir)
+        .map_err(|error| format!("Could not create character asset directory: {error}"))?;
+    let mut manifest = Vec::<CharacterAssetManifestEntry>::new();
+    for (index, asset) in assets.into_iter().enumerate() {
+        let path = assets_dir.join(format!("{:02}-{}.obj", index + 1, safe_filename(&asset.name)));
+        fs::write(&path, asset.obj_text)
+            .map_err(|error| format!("Could not write character asset {}: {error}", asset.name))?;
+        manifest.push(CharacterAssetManifestEntry {
+            name: asset.name,
+            kind: asset.kind,
+            source_path: asset.source_path,
+            path: path.to_string_lossy().to_string(),
+        });
+    }
+    let assets_json = dir.join("assets.json");
+    let manifest_json = serde_json::to_string_pretty(&manifest)
+        .map_err(|error| format!("Could not serialize character assets: {error}"))?;
+    fs::write(&assets_json, manifest_json)
+        .map_err(|error| format!("Could not write character asset manifest: {error}"))?;
 
     let script = r#"import bpy, json, os
 obj_path=os.environ['THREEDBUILDER_CANONICAL_OBJ']
@@ -1062,9 +1102,52 @@ else:
         bpy.ops.object.parent_set(type='ARMATURE_AUTO')
     except Exception as exc:
         print('3D Builder automatic weights warning:', exc)
-arm['3dbuilder_schema']=data.get('schema','3dbuilder.character.v3')
+assets_path=os.environ.get('THREEDBUILDER_ASSETS_JSON','')
+if assets_path and os.path.exists(assets_path):
+    with open(assets_path,'r',encoding='utf-8') as f:
+        character_assets=json.load(f)
+    for entry in character_assets:
+        path=entry.get('path')
+        if not path or not os.path.exists(path):
+            continue
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.ops.wm.obj_import(filepath=path)
+        imported=[obj for obj in bpy.context.selected_objects if obj.type=='MESH']
+        for asset in imported:
+            asset.name='3DBuilder_'+entry.get('kind','asset')+'_'+entry.get('name','Asset')
+            transferred=False
+            if skin:
+                try:
+                    transfer=asset.modifiers.new(name='3DBuilder Weight Transfer',type='DATA_TRANSFER')
+                    transfer.object=body
+                    transfer.use_vert_data=True
+                    transfer.data_types_verts={'VGROUP_WEIGHTS'}
+                    transfer.vert_mapping='POLYINTERP_NEAREST'
+                    transfer.layers_vgroup_select_src='ALL'
+                    transfer.layers_vgroup_select_dst='NAME'
+                    bpy.context.view_layer.objects.active=asset
+                    asset.select_set(True)
+                    bpy.ops.object.modifier_apply(modifier=transfer.name)
+                    arm_mod=asset.modifiers.new(name='3DBuilder Armature',type='ARMATURE')
+                    arm_mod.object=arm
+                    asset.parent=arm
+                    transferred=True
+                except Exception as exc:
+                    print('3D Builder asset weight transfer warning:', entry.get('name'), exc)
+            if not transferred:
+                try:
+                    bpy.ops.object.select_all(action='DESELECT')
+                    asset.select_set(True)
+                    arm.select_set(True)
+                    bpy.context.view_layer.objects.active=arm
+                    bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+                except Exception as exc:
+                    print('3D Builder asset automatic weights warning:', entry.get('name'), exc)
+            asset['3dbuilder_asset_kind']=entry.get('kind','asset')
+            asset['3dbuilder_asset_source']=entry.get('sourcePath','')
+arm['3dbuilder_schema']=data.get('schema','3dbuilder.character.v5')
 arm['3dbuilder_character']=data.get('character',{}).get('name','Character')
-arm['3dbuilder_phase']=int(data.get('phase',3))
+arm['3dbuilder_phase']=int(data.get('phase',5))
 bpy.context.view_layer.objects.active=body
 body.select_set(True)
 "#;
@@ -1075,6 +1158,7 @@ body.select_set(True)
     Command::new(blender)
         .env("THREEDBUILDER_CANONICAL_OBJ", &obj)
         .env("THREEDBUILDER_CHARACTER_JSON", &json)
+        .env("THREEDBUILDER_ASSETS_JSON", &assets_json)
         .args(["--python", script_path.to_string_lossy().as_ref()])
         .spawn()
         .map_err(|error| format!("Could not launch Blender character export: {error}"))?;
