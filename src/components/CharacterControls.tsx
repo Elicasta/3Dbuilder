@@ -37,6 +37,18 @@ const SURFACE_CONTROLS = [
   { key: 'markingsOpacity', label: 'Markings', min: 0, max: 1 }
 ] as const;
 
+const FEMALE_DETAIL_MODIFIERS = [
+  ['breast/nipple-size-decr|incr','Nipple size'],
+  ['breast/nipple-point-decr|incr','Nipple projection'],
+  ['breast/breast-trans-down|up','Breast vertical position'],
+  ['breast/breast-volume-vert-down|up','Breast vertical volume'],
+  ['pelvis/pelvis-tone-decr|incr','Pelvis tone'],
+  ['pelvis/bulge-decr|incr','Pelvic/genital volume'],
+  ['buttocks/buttocks-volume-decr|incr','Buttock volume'],
+  ['stomach/stomach-navel-in|out','Navel depth'],
+  ['stomach/stomach-navel-down|up','Navel height']
+] as const;
+
 const MACROS: Array<{ key: keyof MakeHumanMacroState; label: string; femaleOnly?: boolean }> = [
   { key: 'age', label: 'Age' },
   { key: 'muscle', label: 'Muscle' },
@@ -56,6 +68,8 @@ export default function CharacterControls({ character, onChange, onReset }: Char
     onChange({ ...character, macro: { ...character.macro, [key]: value } });
   const setAnatomy = <K extends keyof CharacterState['anatomy']>(key: K, value: CharacterState['anatomy'][K]) =>
     onChange({ ...character, anatomy: { ...character.anatomy, [key]: value } });
+  const setNativeModifier = (id:string,value:number) =>
+    onChange({ ...character, nativeModifiers: { ...character.nativeModifiers, [id]: value } });
 
   return (
     <section className="panel makehuman-editor">
@@ -140,7 +154,22 @@ export default function CharacterControls({ character, onChange, onReset }: Char
               </div>}
             </div>
           )}
-                    {character.lane !== 'alien' ? <NativeMakeHumanControls character={character} onChange={onChange} /> :
+          {character.lane==='female' && (
+            <div className="mh-macro-panel">
+              <div className="mh-pane-heading"><strong>Female detail</strong><span>Native MakeHuman breast, pelvis, buttock and navel targets.</span></div>
+              <div className="control-stack">
+                {FEMALE_DETAIL_MODIFIERS.map(([id,label])=>{
+                  const value=character.nativeModifiers?.[id]??0;
+                  return <label className="range-control" key={id}>
+                    <span><strong>{label}</strong><output>{value.toFixed(2)}</output></span>
+                    <input type="range" min="-1" max="1" step="0.01" value={value}
+                      onChange={(event)=>setNativeModifier(id,Number(event.target.value))}/>
+                  </label>;
+                })}
+              </div>
+            </div>
+          )}
+          {character.lane !== 'alien' ? <NativeMakeHumanControls character={character} onChange={onChange} /> :
             <div className="mh-native-empty">Alien modeling remains on the custom topology/morph lane.</div>}
         </div>
       )}
