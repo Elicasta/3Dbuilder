@@ -76,7 +76,7 @@ export default function App() {
     }));
     setLastFit(analysis);
     setStatus(
-      `Multi-view fit applied at ${Math.round(analysis.confidence * 100)}% silhouette confidence.`
+      `Multi-view fit applied. Body fit quality ${Math.round(analysis.fitQuality * 100)}%, mask ${Math.round(analysis.confidence * 100)}%.`
     );
   }
 
@@ -234,7 +234,7 @@ export default function App() {
         {lastFit && (
           <>
             <span>·</span>
-            <span>mask {Math.round(lastFit.confidence * 100)}%</span>
+            <span>fit {Math.round(lastFit.fitQuality * 100)}% · mask {Math.round(lastFit.confidence * 100)}%</span>
           </>
         )}
         <span>·</span>
