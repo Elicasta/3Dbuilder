@@ -92,8 +92,8 @@ export default function App() {
           muscle: 0.5,
           weight: 0.5,
           proportions: 0.5,
-          breastSize: 0.5,
-          breastFirmness: 0.5,
+          breastSize: reset.macro.breastSize,
+          breastFirmness: reset.macro.breastFirmness,
           african: 1 / 3,
           asian: 1 / 3,
           caucasian: 1 / 3
