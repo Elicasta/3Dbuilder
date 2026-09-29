@@ -680,6 +680,94 @@ fn safe_filename(name: &str) -> String {
 }
 
 #[tauri::command]
+fn open_character_in_blender(
+    app: tauri::AppHandle,
+    name: String,
+    obj_text: String,
+    recipe: String,
+) -> Result<(), String> {
+    let blender = blender_path().ok_or_else(|| "Blender was not found.".to_string())?;
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("System clock error: {error}"))?
+        .as_millis();
+    let dir = app.path().app_local_data_dir()
+        .map_err(|error| format!("Could not resolve local app data: {error}"))?
+        .join("jobs").join(format!("canonical-{stamp}"));
+    fs::create_dir_all(&dir).map_err(|error| format!("Could not create canonical export: {error}"))?;
+    let obj = dir.join(format!("{}.obj", safe_filename(&name)));
+    let json = dir.join("character.json");
+    fs::write(&obj, obj_text).map_err(|error| format!("Could not write canonical OBJ: {error}"))?;
+    fs::write(&json, recipe).map_err(|error| format!("Could not write character recipe: {error}"))?;
+
+    let script = r#"import bpy, json, os
+obj_path=os.environ['THREEDBUILDER_CANONICAL_OBJ']
+recipe_path=os.environ['THREEDBUILDER_CHARACTER_JSON']
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.wm.obj_import(filepath=obj_path)
+body=bpy.context.selected_objects[0]
+body.name='CanonicalBody'
+with open(recipe_path,'r',encoding='utf-8') as f:
+    data=json.load(f)
+joints=data['rig']['joints']
+def cv(p):
+    return (float(p[0]), -float(p[2]), float(p[1]))
+bpy.ops.object.armature_add(enter_editmode=True, location=(0,0,0))
+arm=bpy.context.object
+arm.name='3DBuilder_Rig'
+edit=arm.data.edit_bones
+for b in list(edit):
+    edit.remove(b)
+children={}
+for j in joints:
+    if j.get('parent'):
+        children.setdefault(j['parent'],[]).append(j)
+bones={}
+for j in joints:
+    b=edit.new(j['name'])
+    b.head=cv(j['position'])
+    kids=children.get(j['name'],[])
+    if kids:
+        b.tail=cv(kids[0]['position'])
+    else:
+        x,y,z=b.head
+        b.tail=(x,y,z+0.08)
+    if sum((b.tail[i]-b.head[i])**2 for i in range(3)) < 1e-6:
+        x,y,z=b.head
+        b.tail=(x,y,z+0.08)
+    bones[j['name']]=b
+for j in joints:
+    parent=j.get('parent')
+    if parent and parent in bones:
+        bones[j['name']].parent=bones[parent]
+bpy.ops.object.mode_set(mode='OBJECT')
+body.select_set(True)
+arm.select_set(True)
+bpy.context.view_layer.objects.active=arm
+try:
+    bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+except Exception as exc:
+    print('3D Builder automatic weights warning:', exc)
+arm['3dbuilder_schema']=data.get('schema','3dbuilder.character.v2')
+arm['3dbuilder_character']=data.get('character',{}).get('name','Character')
+bpy.context.view_layer.objects.active=body
+body.select_set(True)
+"#;
+
+    let script_path = dir.join("import_character.py");
+    fs::write(&script_path, script)
+        .map_err(|error| format!("Could not write Blender import script: {error}"))?;
+    Command::new(blender)
+        .env("THREEDBUILDER_CANONICAL_OBJ", &obj)
+        .env("THREEDBUILDER_CHARACTER_JSON", &json)
+        .args(["--python", script_path.to_string_lossy().as_ref()])
+        .spawn()
+        .map_err(|error| format!("Could not launch Blender character export: {error}"))?;
+    Ok(())
+}
+
+#[tauri::command]
 fn save_recipe(app: tauri::AppHandle, name: String, recipe: String) -> Result<String, String> {
     let documents = app
         .path()
@@ -710,6 +798,7 @@ pub fn run() {
             run_reconstruction,
             latest_generated_mesh,
             open_in_blender,
+            open_character_in_blender,
             save_recipe
         ])
         .run(tauri::generate_context!())
