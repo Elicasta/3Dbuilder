@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BASE_MORPHS } from '../types/character';
-import { makeHumanAgeWeights, resolveMakeHumanMacroTargets, resolveMakeHumanMorphTargets } from './makehumanMorphs';
+import { makeHumanAgeWeights, resolveMakeHumanAnatomyTargets, resolveMakeHumanMacroTargets, resolveMakeHumanMorphTargets } from './makehumanMorphs';
 
 describe('MakeHuman modifier resolver', () => {
   it('uses exact MakeHuman measurement modifiers for body dimensions', () => {
@@ -98,6 +98,36 @@ describe('MakeHuman modifier resolver', () => {
       african:1/3,asian:1/3,caucasian:1/3
     });
     expect(targets.some((target)=>target.path.startsWith('breast/female-young-'))).toBe(true);
+  });
+
+
+  it('resolves explicit male anatomy only through real MakeHuman target names', () => {
+    const catalog=[
+      'genitals/penis-length-incr.target',
+      'genitals/penis-circ-decr.target',
+      'genitals/penis-testicles-incr.target'
+    ];
+    const anatomy={
+      mode:'detailed' as const,
+      penisLength:1,penisGirth:0,testicleSize:.75,glansSize:.5,scrotumDrop:.5,
+      vulvaWidth:.5,labiaMajora:.5,labiaMinora:.5,clitoralSize:.5,vaginalOpening:.5,monsPubis:.5
+    };
+    const targets=resolveMakeHumanAnatomyTargets('male',anatomy,catalog);
+    expect(targets.map(t=>t.path).sort()).toEqual([
+      'genitals/penis-circ-decr.target',
+      'genitals/penis-length-incr.target',
+      'genitals/penis-testicles-incr.target'
+    ]);
+  });
+
+  it('keeps anatomy off and never invents native female genital targets', () => {
+    const anatomy={
+      mode:'off' as const,
+      penisLength:1,penisGirth:1,testicleSize:1,glansSize:1,scrotumDrop:1,
+      vulvaWidth:1,labiaMajora:1,labiaMinora:1,clitoralSize:1,vaginalOpening:1,monsPubis:1
+    };
+    expect(resolveMakeHumanAnatomyTargets('male',anatomy,['genitals/penis-length-incr.target'])).toEqual([]);
+    expect(resolveMakeHumanAnatomyTargets('female',{...anatomy,mode:'detailed'},['genitals/penis-length-incr.target'])).toEqual([]);
   });
 
 });
