@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { BufferGeometry, Float32BufferAttribute } from 'three';
 import type { CharacterState } from '../types/character';
+import type { PoseState } from '../lib/pose';
 
 type Ring = { y: number; rx: number; rz: number };
 type ArmRing = { x: number; y: number; ry: number; rz: number };
@@ -13,7 +14,7 @@ function connectRings(indices: number[], a: number, b: number, segments: number,
   }
 }
 
-function buildBody(character: CharacterState) {
+function buildBody(character: CharacterState, pose: PoseState) {
   const { morphs: m } = character;
   const h = m.height;
   const build = m.build;
@@ -142,6 +143,42 @@ function buildBody(character: CharacterState) {
   };
   addLeg(-1); addLeg(1);
 
+  // Lightweight linear skinning for the generated cage. It is intentionally
+  // deterministic and uses the same landmarks as the rig overlay. Phase 3 can
+  // replace these procedural weights with authored/corrective weights without
+  // changing the character recipe.
+  const rotZ=(i:number,px:number,py:number,a:number)=>{
+    const x=vertices[i]-px,y=vertices[i+1]-py,co=Math.cos(a),si=Math.sin(a);
+    vertices[i]=px+x*co-y*si; vertices[i+1]=py+x*si+y*co;
+  };
+  const rotX=(i:number,py:number,pz:number,a:number)=>{
+    const y=vertices[i+1]-py,z=vertices[i+2]-pz,co=Math.cos(a),si=Math.sin(a);
+    vertices[i+1]=py+y*co-z*si; vertices[i+2]=pz+y*si+z*co;
+  };
+  for(let i=0;i<vertices.length;i+=3){
+    const originalX=vertices[i], originalY=vertices[i+1];
+    const side=originalX<0?-1:1;
+    if(Math.abs(originalX)>shoulderX*.64 && originalY>shoulderY-.36){
+      const shoulderAngle=side<0?pose.leftShoulderZ:pose.rightShoulderZ;
+      rotZ(i,side*shoulderX,shoulderY,shoulderAngle);
+      if(Math.abs(originalX)>elbowX-.08){
+        const ex=side*elbowX, ey=shoulderY-.045;
+        const dx=ex-side*shoulderX,dy=ey-shoulderY,co=Math.cos(shoulderAngle),si=Math.sin(shoulderAngle);
+        const pex=side*shoulderX+dx*co-dy*si, pey=shoulderY+dx*si+dy*co;
+        rotZ(i,pex,pey,side<0?pose.leftElbowZ:pose.rightElbowZ);
+      }
+    } else if(originalY<hipY+.24 && Math.abs(originalX)>Math.max(.08,hipX-.22)){
+      const hipAngle=side<0?pose.leftHipX:pose.rightHipX;
+      rotX(i,hipY,0,hipAngle);
+      if(originalY<kneeY+.12){
+        const kneeAngle=side<0?pose.leftKneeX:pose.rightKneeX;
+        const ky=hipY+(kneeY-hipY)*Math.cos(hipAngle);
+        const kz=(kneeY-hipY)*Math.sin(hipAngle);
+        rotX(i,ky,kz,kneeAngle);
+      }
+    }
+  }
+
   const geometry=new BufferGeometry();
   geometry.setAttribute('position',new Float32BufferAttribute(vertices,3));
   geometry.setIndex(indices);
@@ -151,8 +188,8 @@ function buildBody(character: CharacterState) {
   return geometry;
 }
 
-export default function CanonicalBody({character}:{character:CharacterState}){
-  const geometry=useMemo(()=>buildBody(character),[character]);
+export default function CanonicalBody({character,pose}:{character:CharacterState;pose:PoseState}){
+  const geometry=useMemo(()=>buildBody(character,pose),[character,pose]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh geometry={geometry} castShadow receiveShadow>
     <meshStandardMaterial color={character.appearance.skin} roughness={character.appearance.skinRoughness} metalness={0.02}/>
