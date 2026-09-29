@@ -390,14 +390,16 @@ fn prepare_engine_runtime(app: tauri::AppHandle, id: String) -> Result<String, S
         runtime_requirements.push("onnxruntime".to_string());
     }
 
-    // TripoSR pins trimesh 4.0.5. Its GLB exporter calls ndarray.ptp(), which
-    // NumPy 2 removed from ndarray. Keep NumPy on the compatible 1.x ABI for
-    // this isolated research runtime.
+    // Keep the numerical stack internally consistent. TripoSR pins trimesh
+    // 4.0.5, whose GLB exporter needs NumPy 1.x. New SciPy releases require
+    // NumPy 2, while older SciPy releases can still reference np.long (removed
+    // in NumPy 1.24). NumPy 1.23.5 + SciPy 1.10.1 is the compatible overlap.
     runtime_requirements.retain(|line| {
         let lower = line.to_ascii_lowercase();
-        !lower.starts_with("numpy")
+        !lower.starts_with("numpy") && !lower.starts_with("scipy")
     });
-    runtime_requirements.push("numpy>=1.24,<2".to_string());
+    runtime_requirements.push("numpy==1.23.5".to_string());
+    runtime_requirements.push("scipy==1.10.1".to_string());
 
     let runtime_requirements_path = root.join("triposr-runtime-requirements.txt");
     fs::write(
@@ -487,30 +489,29 @@ fn run_reconstruction(
         return Err("TripoSR runtime is not prepared.".to_string());
     }
 
-    // Self-heal older prepared runtimes. trimesh 4.0.5's GLB exporter uses
-    // ndarray.ptp(), which NumPy 2 removed. A user may already have a ready
-    // runtime from before we added the NumPy 1.x pin, so repair it here once
-    // instead of letting a 20-second reconstruction fail at export.
-    let numpy_compatible = Command::new(&python)
+    // Self-heal runtimes prepared with a mismatched NumPy/SciPy pair before
+    // paying the cost of reconstruction.
+    let numerical_stack_compatible = Command::new(&python)
         .args([
             "-c",
-            "import numpy as np, sys; sys.exit(0 if int(np.__version__.split('.')[0]) < 2 else 1)",
+            "import numpy, scipy, sys; sys.exit(0 if numpy.__version__ == '1.23.5' and scipy.__version__ == '1.10.1' else 1)",
         ])
         .status()
         .map(|status| status.success())
         .unwrap_or(false);
 
-    if !numpy_compatible {
-        let mut repair_numpy = Command::new(&python);
-        repair_numpy.args([
+    if !numerical_stack_compatible {
+        let mut repair_stack = Command::new(&python);
+        repair_stack.args([
             "-m",
             "pip",
             "install",
             "--upgrade",
             "--force-reinstall",
-            "numpy>=1.24,<2",
+            "numpy==1.23.5",
+            "scipy==1.10.1",
         ]);
-        run_checked(&mut repair_numpy, "Repair TripoSR NumPy compatibility")?;
+        run_checked(&mut repair_stack, "Repair TripoSR numerical compatibility")?;
     }
 
     let input = PathBuf::from(input_path);
