@@ -10,6 +10,7 @@ import {
   detectBlender,
   getLatestGeneratedMesh,
   openInBlender,
+  openCanonicalInBlender,
   runReconstruction,
   saveCharacterRecipe,
   stageReference,
@@ -159,6 +160,15 @@ export default function App() {
     }
   }
 
+  async function openCanonicalCharacter() {
+    try {
+      await openCanonicalInBlender(character);
+      setStatus('Canonical Phase 2 character opened in Blender with humanoid armature.');
+    } catch (error) {
+      setStatus(`Could not export canonical character: ${String(error)}`);
+    }
+  }
+
   async function openGeneratedMesh() {
     if (!generatedMesh) return;
     try {
@@ -198,6 +208,10 @@ export default function App() {
 
           <button className="secondary-button" type="button" onClick={saveRecipe}>
             Save recipe
+          </button>
+
+          <button className="secondary-button" type="button" onClick={() => void openCanonicalCharacter()}>
+            Open Rigged Character in Blender
           </button>
 
           {generatedMesh && (
@@ -292,8 +306,8 @@ export default function App() {
             <div className="pipeline-step">
               <span>04</span>
               <div>
-                <strong>Finish & export</strong>
-                <small>Blender · Unreal FBX · GLB · BLEND · STL</small>
+                <strong>Rig & export</strong>
+                <small>Canonical mesh + humanoid armature → Blender</small>
               </div>
             </div>
           </section>
