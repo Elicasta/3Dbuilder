@@ -1,4 +1,4 @@
-import type { BufferGeometry } from 'three';
+import type { BufferAttribute, BufferGeometry } from 'three';
 import type { CharacterState } from '../types/character';
 import { getMakeHumanTargetCatalog, getMakeHumanTargetText } from './desktop';
 import { parseMakeHumanObj } from './makehumanObj';
@@ -57,7 +57,7 @@ export async function evaluateMakeHumanGeometry(
     }))
   );
 
-  const attribute = geometry.getAttribute('position');
+  const attribute = geometry.getAttribute('position') as BufferAttribute;
   const positions = new Float32Array(attribute.array as ArrayLike<number>);
   for (const target of loaded) {
     applyTargetDeltasInPlace(positions, target.deltas, target.weight);
