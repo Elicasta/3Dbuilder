@@ -233,9 +233,32 @@ function AlignedAICandidate({ url, character, overlay = false }: { url: string; 
     scene.updateMatrixWorld(true);
 
     bounds = new Box3().setFromObject(scene);
-    const center = bounds.getCenter(new Vector3());
-    scene.position.x -= center.x;
-    scene.position.z -= center.z;
+
+    // TripoSR often produces an incomplete/detached arm. A normal bounding-box
+    // center lets that bad limb drag the whole candidate sideways. Center from
+    // the median vertex position instead, which follows the torso/head mass and
+    // stays stable even when one extremity is malformed.
+    const xs: number[] = [];
+    const zs: number[] = [];
+    const point = new Vector3();
+    scene.traverse((object: any) => {
+      if (!object.isMesh || !object.geometry?.attributes?.position) return;
+      const positions = object.geometry.attributes.position;
+      const stride = Math.max(1, Math.floor(positions.count / 12000));
+      for (let i = 0; i < positions.count; i += stride) {
+        point.fromBufferAttribute(positions, i).applyMatrix4(object.matrixWorld);
+        xs.push(point.x);
+        zs.push(point.z);
+      }
+    });
+    const median = (values: number[]) => {
+      if (!values.length) return 0;
+      values.sort((a, b) => a - b);
+      const middle = Math.floor(values.length / 2);
+      return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
+    };
+    scene.position.x -= median(xs);
+    scene.position.z -= median(zs);
     scene.position.y += target.floor - bounds.min.y;
     scene.updateMatrixWorld(true);
 
