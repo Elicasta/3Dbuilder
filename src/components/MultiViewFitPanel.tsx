@@ -19,7 +19,7 @@ export default function MultiViewFitPanel({ references }: MultiViewFitPanelProps
     try {
       let timer:number|undefined;
       const result = await Promise.race([
-        analyzeMultiView(references),
+        analyzeMultiView(references,{landmarks:false}),
         new Promise<never>((_,reject)=>{
           timer=window.setTimeout(()=>reject(new Error('Reference analysis exceeded 20 seconds. Retry, or use Build Character to continue with available fallback evidence.')),20000);
         })
@@ -37,7 +37,7 @@ export default function MultiViewFitPanel({ references }: MultiViewFitPanelProps
       <div className="panel-header split-header">
         <div>
           <h2>Reference diagnostics</h2>
-          <p>Inspect masks and landmarks here. Build Character runs the authoritative optimizer.</p>
+          <p>Fast silhouette diagnostics here. Build Character runs deeper landmark/refinement fitting.</p>
         </div>
         <span className={count === 3 ? 'view-count ready' : 'view-count'}>{count}/3</span>
       </div>
@@ -65,8 +65,8 @@ export default function MultiViewFitPanel({ references }: MultiViewFitPanelProps
               <strong>{Math.round(analysis.fitQuality * 100)}%</strong>
             </div>
             <div>
-              <span>Landmark detection</span>
-              <strong>{Math.round(analysis.landmarkConfidence * 100)}%</strong>
+              <span>Landmarks in diagnostics</span>
+              <strong>Skipped</strong>
             </div>
             <div>
               <span>Views analyzed</span>
