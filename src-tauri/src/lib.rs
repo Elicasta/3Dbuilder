@@ -334,6 +334,44 @@ fn makehuman_base_obj(app: tauri::AppHandle) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| format!("Could not read MakeHuman basemesh {}: {e}",path.to_string_lossy()))
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MakeHumanAssetEntry {
+    kind: String,
+    name: String,
+    relative_path: String,
+}
+
+#[tauri::command]
+fn makehuman_asset_catalog(app: tauri::AppHandle) -> Result<Vec<MakeHumanAssetEntry>, String> {
+    let data = engine_root(&app, "makehuman")?
+        .join("source").join("makehuman").join("data");
+    if !data.exists() {
+        return Err("MakeHuman data library is not installed.".to_string());
+    }
+    let mut result = Vec::new();
+    let mut stack = vec![data.clone()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() { stack.push(path); continue; }
+            let ext = path.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+            let kind = match ext.as_str() {
+                "mhclo" => "geometry",
+                "proxy" => "proxy",
+                "mhmat" => "material",
+                _ => continue,
+            };
+            let relative = path.strip_prefix(&data).unwrap_or(&path).to_string_lossy().replace('\\', "/");
+            let name = path.file_stem().and_then(|value| value.to_str()).unwrap_or("asset").to_string();
+            result.push(MakeHumanAssetEntry { kind: kind.to_string(), name, relative_path: relative });
+        }
+    }
+    result.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
+    Ok(result)
+}
+
 #[tauri::command]
 fn makehuman_definition_text(app: tauri::AppHandle, file_name: String) -> Result<String, String> {
     const ALLOWED: &[&str] = &[
@@ -1023,6 +1061,7 @@ pub fn run() {
             save_recipe,
             makehuman_asset_status,
             makehuman_base_obj,
+            makehuman_asset_catalog,
             makehuman_definition_text,
             makehuman_target_catalog,
             makehuman_target_text,
