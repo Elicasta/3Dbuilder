@@ -3,7 +3,8 @@ import { ENGINES } from '../data/engines';
 import {
   getEngineStatuses,
   getSystemCapabilities,
-  installEngineSource
+  installEngineSource,
+  prepareEngineRuntime
 } from '../lib/desktop';
 import type { EngineStatus, SystemCapabilities } from '../types/engine';
 
@@ -38,6 +39,20 @@ export default function EngineLab() {
     () => new Map(statuses.map((status) => [status.id, status])),
     [statuses]
   );
+
+  async function prepare(id: string) {
+    setBusyEngine(id);
+    setMessage(`Preparing ${id} runtime. This can take several minutes on first run…`);
+    try {
+      const path = await prepareEngineRuntime(id);
+      setMessage(`${id} runtime ready: ${path}`);
+      await refresh();
+    } catch (error) {
+      setMessage(`Prepare failed: ${String(error)}`);
+    } finally {
+      setBusyEngine(null);
+    }
+  }
 
   async function install(id: string) {
     setBusyEngine(id);
@@ -77,6 +92,7 @@ export default function EngineLab() {
         {ENGINES.map((engine) => {
           const status = statusById.get(engine.id);
           const installed = status?.installed ?? false;
+          const prepared = status?.prepared ?? false;
 
           return (
             <article className={installed ? 'engine-card installed' : 'engine-card'} key={engine.id}>
@@ -104,17 +120,32 @@ export default function EngineLab() {
 
               <div className="engine-card-bottom">
                 <span className={installed ? 'engine-state ready' : 'engine-state'}>
-                  {installed ? 'Source installed' : 'Not installed'}
+                  {prepared ? 'Runtime ready' : installed ? 'Source installed' : 'Not installed'}
                 </span>
                 {engine.researchOnly && <span className="research-badge">research-only</span>}
-                <button
-                  className="secondary-button compact-button"
-                  type="button"
-                  disabled={installed || busyEngine !== null || !capabilities?.gitPath}
-                  onClick={() => void install(engine.id)}
-                >
-                  {busyEngine === engine.id ? 'Installing…' : installed ? 'Installed' : 'Install source'}
-                </button>
+                {!installed ? (
+                  <button
+                    className="secondary-button compact-button"
+                    type="button"
+                    disabled={busyEngine !== null || !capabilities?.gitPath}
+                    onClick={() => void install(engine.id)}
+                  >
+                    {busyEngine === engine.id ? 'Installing…' : 'Install source'}
+                  </button>
+                ) : engine.id === 'triposr' && !prepared ? (
+                  <button
+                    className="secondary-button compact-button"
+                    type="button"
+                    disabled={busyEngine !== null || !capabilities?.pythonPath}
+                    onClick={() => void prepare(engine.id)}
+                  >
+                    {busyEngine === engine.id ? 'Preparing…' : 'Prepare runtime'}
+                  </button>
+                ) : (
+                  <button className="secondary-button compact-button" type="button" disabled>
+                    {prepared ? 'Ready' : 'Source only'}
+                  </button>
+                )}
               </div>
             </article>
           );
