@@ -68,10 +68,10 @@ fn command_lookup(command: &str, executable: &str) -> Option<PathBuf> {
         .find(|path| path.exists())
 }
 
-fn find_executable(unix_name: &str, windows_name: &str) -> Option<PathBuf> {
+fn find_executable(unix_name: &str, _windows_name: &str) -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {
-        command_lookup("where", windows_name)
+        command_lookup("where", _windows_name)
     }
 
     #[cfg(not(target_os = "windows"))]
@@ -133,10 +133,13 @@ fn compatible_engine_python() -> Option<PathBuf> {
 
     for candidate in candidates {
         if let Some(path) = find_executable(candidate, candidate) {
-            let output = Command::new(&path)
+            let output = match Command::new(&path)
                 .args(["-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"])
                 .output()
-                .ok()?;
+            {
+                Ok(output) => output,
+                Err(_) => continue,
+            };
             if output.status.success() {
                 let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 if matches!(version.as_str(), "3.10" | "3.11" | "3.12") {
