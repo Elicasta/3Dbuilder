@@ -3,11 +3,10 @@ import { BufferGeometry, Float32BufferAttribute } from 'three';
 /**
  * Minimal OBJ reader for the MakeHuman hm08 canonical body.
  *
- * MakeHuman stores rig landmarks and construction geometry in the same OBJ as
- * the visible human. Its own projection/export code excludes face groups whose
- * names begin with "joint" or "helper". Mirror that rule here so those internal
- * cages never reach the viewport while source vertex IDs remain stable for
- * .target morphs.
+ * MakeHuman hm08 base.obj already uses the runtime convention we want:
+ * X left/right, Y up, Z depth, front toward +Z. Keep source positions exactly
+ * in that space so vertex IDs, morph targets, rig landmarks and MHCLO offsets
+ * all share one coordinate contract.
  */
 export function parseMakeHumanObj(text: string): BufferGeometry {
   const positions: number[] = [];
@@ -28,8 +27,7 @@ export function parseMakeHumanObj(text: string): BufferGeometry {
         const x = Number(p[1]);
         const y = Number(p[2]);
         const z = Number(p[3]);
-        // MakeHuman OBJ is Z-up. 3D Builder/Three is Y-up.
-        positions.push(x, z, -y);
+        positions.push(x, y, z);
       }
       continue;
     }
@@ -44,7 +42,6 @@ export function parseMakeHumanObj(text: string): BufferGeometry {
       .map((token) => Number.parseInt(token.split('/')[0], 10) - 1)
       .filter((index) => Number.isInteger(index) && index >= 0);
 
-    // hm08 contains quads. Fan triangulation preserves the original vertex IDs.
     for (let i = 1; i + 1 < refs.length; i += 1) {
       indices.push(refs[0], refs[i], refs[i + 1]);
     }
