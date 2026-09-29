@@ -428,33 +428,54 @@ type ViewMode = 'canonical' | 'ai' | 'overlay';
 
 function AICandidate({ url, overlay = false }: { url: string; overlay?: boolean }) {
   const gltf = useGLTF(url);
-  const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
+  const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene, overlay]);
 
   useEffect(() => {
-    const bounds = new Box3().setFromObject(scene);
-    const size = bounds.getSize(new Vector3());
-    const center = bounds.getCenter(new Vector3());
-    const targetHeight = 5.15;
-    const scale = size.y > 0 ? targetHeight / size.y : 1;
+    // TripoSR/glTF arrives Z-up relative to our Three.js Y-up builder. Rotate
+    // the candidate first, then measure it in builder space.
+    scene.rotation.set(-Math.PI / 2, 0, 0);
+    scene.position.set(0, 0, 0);
+    scene.scale.setScalar(1);
+    scene.updateMatrixWorld(true);
 
-    scene.position.set(-center.x * scale, -center.y * scale + 0.48, -center.z * scale);
+    const orientedBounds = new Box3().setFromObject(scene);
+    const orientedSize = orientedBounds.getSize(new Vector3());
+    const targetHeight = 5.15;
+    const scale = orientedSize.y > 0 ? targetHeight / orientedSize.y : 1;
     scene.scale.setScalar(scale);
+    scene.updateMatrixWorld(true);
+
+    // Ground at the same plane as the canonical character and center X/Z so
+    // overlay comparisons remain meaningful from every orbit angle.
+    const scaledBounds = new Box3().setFromObject(scene);
+    const scaledCenter = scaledBounds.getCenter(new Vector3());
+    scene.position.x -= scaledCenter.x;
+    scene.position.z -= scaledCenter.z;
+    scene.position.y += -2.03 - scaledBounds.min.y;
+    scene.updateMatrixWorld(true);
 
     scene.traverse((object) => {
-      const mesh = object as unknown as { isMesh?: boolean; castShadow?: boolean; receiveShadow?: boolean; material?: any };
+      const mesh = object as unknown as {
+        isMesh?: boolean;
+        castShadow?: boolean;
+        receiveShadow?: boolean;
+        material?: any;
+      };
       if (!mesh.isMesh) return;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      if (overlay && mesh.material) {
-        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        materials.forEach((material: any) => {
-          material = material.clone();
+
+      const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const materials = sourceMaterials.map((source: any) => {
+        const material = source?.clone ? source.clone() : source;
+        if (overlay && material) {
           material.transparent = true;
-          material.opacity = 0.48;
+          material.opacity = 0.42;
           material.depthWrite = false;
-        });
-        mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
-      }
+        }
+        return material;
+      });
+      mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
     });
   }, [scene, overlay]);
 
