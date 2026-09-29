@@ -43,6 +43,10 @@ export async function runReconstruction(id: string, inputPath: string): Promise<
   });
 }
 
+export async function getLatestGeneratedMesh(): Promise<string | null> {
+  return invoke<string | null>('latest_generated_mesh');
+}
+
 export async function openInBlender(meshPath: string): Promise<void> {
   return invoke<void>('open_in_blender', { meshPath });
 }
