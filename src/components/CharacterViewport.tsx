@@ -148,9 +148,9 @@ function Eye({
   );
 }
 
-function CharacterMesh({ character, pose, makeHumanObj }: { character: CharacterState; pose: PoseState; makeHumanObj?: string | null }) {
+function CharacterMesh({ character, pose, posePreset, makeHumanObj }: { character: CharacterState; pose: PoseState; posePreset: PosePreset; makeHumanObj?: string | null }) {
   if (makeHumanObj && character.lane !== 'alien') {
-    return <MakeHumanBody objText={makeHumanObj} character={character} />;
+    return <MakeHumanBody objText={makeHumanObj} character={character} poseName={posePreset==='tPose'?'bind':posePreset} />;
   }
   const { morphs, appearance, wardrobe, lane, style } = character;
   const height = morphs.height;
@@ -350,7 +350,7 @@ export default function CharacterViewport({
           <ambientLight intensity={1.2} />
           <directionalLight castShadow intensity={3.1} position={[4, 8, 5]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
           <directionalLight intensity={1.25} position={[-5, 3, -4]} />
-          {(viewMode === 'canonical' || viewMode === 'rig' || viewMode === 'overlay') && <CharacterMesh character={character} pose={pose} makeHumanObj={makeHumanObj} />}
+          {(viewMode === 'canonical' || viewMode === 'rig' || viewMode === 'overlay') && <CharacterMesh character={character} pose={pose} posePreset={posePreset} makeHumanObj={makeHumanObj} />}
           {viewMode === 'rig' && <RigOverlay character={character} pose={pose} />}
           {aiMeshUrl && (viewMode === 'ai' || viewMode === 'overlay') && <Suspense fallback={null}><AlignedAICandidate url={aiMeshUrl} character={character} overlay={viewMode === 'overlay'} /></Suspense>}
           <gridHelper args={[18, 18, '#303846', '#202630']} position={[0, -2.05, 0]} />
