@@ -372,6 +372,61 @@ fn makehuman_asset_catalog(app: tauri::AppHandle) -> Result<Vec<MakeHumanAssetEn
     Ok(result)
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MakeHumanAssetBundle {
+    relative_path: String,
+    definition_text: String,
+    obj_text: String,
+    material_text: Option<String>,
+}
+
+#[tauri::command]
+fn makehuman_asset_bundle(app: tauri::AppHandle, relative_path: String) -> Result<MakeHumanAssetBundle, String> {
+    let data = engine_root(&app, "makehuman")?
+        .join("source").join("makehuman").join("data")
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve MakeHuman data library: {error}"))?;
+    let definition = data.join(&relative_path)
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve MakeHuman asset {relative_path}: {error}"))?;
+    if !definition.starts_with(&data) {
+        return Err("Refusing to read a file outside the MakeHuman data library.".to_string());
+    }
+    let ext = definition.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+    if ext != "mhclo" && ext != "proxy" {
+        return Err("Only MakeHuman fitted geometry assets can be loaded.".to_string());
+    }
+    let definition_text = fs::read_to_string(&definition)
+        .map_err(|error| format!("Could not read MakeHuman asset {relative_path}: {error}"))?;
+    let folder = definition.parent().ok_or_else(|| "MakeHuman asset has no parent folder.".to_string())?;
+    let referenced = |key: &str| -> Option<String> {
+        definition_text.lines().find_map(|line| {
+            let mut words = line.split_whitespace();
+            (words.next()? == key).then(|| words.next().unwrap_or("").to_string())
+        }).filter(|value| !value.is_empty())
+    };
+    let obj_name = referenced("obj_file").ok_or_else(|| "MakeHuman asset does not declare obj_file.".to_string())?;
+    let obj_path = folder.join(obj_name).canonicalize()
+        .map_err(|error| format!("Could not resolve fitted asset OBJ: {error}"))?;
+    if !obj_path.starts_with(&data) {
+        return Err("Refusing to read an asset OBJ outside the MakeHuman data library.".to_string());
+    }
+    let obj_text = fs::read_to_string(&obj_path)
+        .map_err(|error| format!("Could not read fitted asset OBJ: {error}"))?;
+    let material_text = if let Some(material_name) = referenced("material") {
+        let material_path = folder.join(material_name).canonicalize()
+            .map_err(|error| format!("Could not resolve fitted asset material: {error}"))?;
+        if !material_path.starts_with(&data) {
+            return Err("Refusing to read an asset material outside the MakeHuman data library.".to_string());
+        }
+        Some(fs::read_to_string(&material_path)
+            .map_err(|error| format!("Could not read fitted asset material: {error}"))?)
+    } else { None };
+
+    Ok(MakeHumanAssetBundle { relative_path, definition_text, obj_text, material_text })
+}
+
 #[tauri::command]
 fn makehuman_definition_text(app: tauri::AppHandle, file_name: String) -> Result<String, String> {
     const ALLOWED: &[&str] = &[
@@ -1062,6 +1117,7 @@ pub fn run() {
             makehuman_asset_status,
             makehuman_base_obj,
             makehuman_asset_catalog,
+            makehuman_asset_bundle,
             makehuman_definition_text,
             makehuman_target_catalog,
             makehuman_target_text,
