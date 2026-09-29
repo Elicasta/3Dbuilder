@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import CharacterControls from './components/CharacterControls';
-import CharacterViewport from './components/CharacterViewport';
 import EngineLab from './components/EngineLab';
 import MultiViewFitPanel from './components/MultiViewFitPanel';
 import ReferenceUploader from './components/ReferenceUploader';
@@ -25,6 +24,8 @@ import {
   type ReferenceSlot
 } from './types/character';
 import type { MultiViewAnalysis } from './types/multiview';
+
+const CharacterViewport = lazy(() => import('./components/CharacterViewport'));
 
 const EMPTY_REFERENCES: CharacterReferences = {
   front: null,
@@ -274,12 +275,14 @@ export default function App() {
         </aside>
 
         <div className="stage">
-          <CharacterViewport
-            character={character}
-            aiMeshUrl={generatedMesh ? convertFileSrc(generatedMesh) : null}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-          />
+          <Suspense fallback={<section className="panel viewport-panel"><div className="panel-header"><div><h2>Live 3D Builder</h2><p>Loading graphics engine…</p></div></div><div className="viewport-canvas" /></section>}>
+            <CharacterViewport
+              character={character}
+              aiMeshUrl={generatedMesh ? convertFileSrc(generatedMesh) : null}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
+          </Suspense>
 
           <section className="panel pipeline-panel">
             <div className="pipeline-step done">
