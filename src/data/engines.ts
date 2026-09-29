@@ -14,14 +14,14 @@ export const ENGINES: EngineDefinition[] = [
   },
   {
     id: 'mpfb',
-    name: 'MPFB / MakeHuman',
+    name: 'MPFB / Blender Finisher',
     role: 'body-prior',
     repository: 'https://github.com/makehumancommunity/mpfb2.git',
     researchOnly: false,
-    summary: 'Parametric human base-body and Blender character workflow.',
-    bestFor: 'Canonical topology, morph targets, rig-ready base humans.',
+    summary: 'Blender-side finishing, proxy assets and rig workflow for the hm08 character.',
+    bestFor: 'Final Blender handoff, clothing/proxies and production finishing.',
     runtime: 'Blender',
-    priority: 'core'
+    priority: 'optional'
   },
   {
     id: 'triposr',
@@ -29,8 +29,8 @@ export const ENGINES: EngineDefinition[] = [
     role: 'reconstruction',
     repository: 'https://github.com/VAST-AI-Research/TripoSR.git',
     researchOnly: false,
-    summary: 'Fast single-image reconstruction used as a local geometry candidate.',
-    bestFor: 'Fast prototype meshes and fallback reconstruction.',
+    summary: 'Apple-Silicon-capable local image-to-3D candidate; never replaces hm08 topology.',
+    bestFor: 'Local reference geometry when a photo contains shape detail the fitter cannot measure.',
     runtime: 'Python / PyTorch',
     priority: 'core'
   },
@@ -40,10 +40,10 @@ export const ENGINES: EngineDefinition[] = [
     role: 'human-reconstruction',
     repository: 'https://github.com/zjp-shadow/CharacterGen.git',
     researchOnly: false,
-    summary: 'Character-focused image-to-3D pipeline with canonicalized views.',
-    bestFor: 'Primary character reconstruction experiments.',
+    summary: 'GPU-worker character reconstruction candidate; not a local Apple-Silicon production dependency.',
+    bestFor: 'NVIDIA worker experiments for character-specific geometry evidence.',
     runtime: 'Python / CUDA recommended',
-    priority: 'core'
+    priority: 'gpu-lab'
   },
   {
     id: 'econ',
