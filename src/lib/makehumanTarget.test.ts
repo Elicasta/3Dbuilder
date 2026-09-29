@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { applyMakeHumanTarget, parseMakeHumanTarget } from './makehumanTarget';
 
 describe('MakeHuman hm08 target adapter', () => {
-  it('converts MakeHuman X/Z/inverted-Y rows into builder Y-up deltas', () => {
+  it('preserves target displacement in native MakeHuman runtime axes', () => {
     const target = parseMakeHumanTarget('# basemesh hm08\n293 -0.0102 0.0087 0.0269\n');
-    expect(target).toEqual([{ vertex: 293, x: -0.0102, y: -0.0269, z: 0.0087 }]);
+    expect(target).toEqual([{ vertex: 293, x: -0.0102, y: 0.0087, z: 0.0269 }]);
   });
 
   it('applies sparse weighted targets without changing vertex count', () => {
