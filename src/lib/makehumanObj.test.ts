@@ -17,9 +17,14 @@ describe('MakeHuman OBJ adapter', () => {
     expect(g.getAttribute('position').count).toBe(5);
     expect(g.getIndex()?.count).toBe(6);
   });
-  it('converts MakeHuman Z-up positions to builder Y-up', () => {
+  it('preserves native MakeHuman Y-up coordinates', () => {
     const g=parseMakeHumanObj('v 1 2 3\nv 0 0 0\nv 0 1 0\nf 1 2 3\n');
     const p=g.getAttribute('position');
-    expect([p.getX(0),p.getY(0),p.getZ(0)]).toEqual([1,3,-2]);
+    expect([p.getX(0),p.getY(0),p.getZ(0)]).toEqual([1,2,3]);
+  });
+  it('keeps an upright body's dominant span on Y', () => {
+    const g=parseMakeHumanObj('v -1 -2 -.4\nv 1 -2 .4\nv 0 2 .2\nf 1 2 3\n');
+    g.computeBoundingBox(); const b=g.boundingBox!;
+    expect(b.max.y-b.min.y).toBeGreaterThan(b.max.z-b.min.z);
   });
 });
