@@ -72,14 +72,25 @@ function nearestRowWidth(
   y: number,
   centerX: number
 ) {
-  for (let offset = 0; offset <= 8; offset += 1) {
-    for (const candidate of [y - offset, y + offset]) {
-      if (candidate < 0 || candidate >= SIZE) continue;
-      const value = centralWidth(mask, width, candidate, centerX);
-      if (value && value > 2) return value;
-    }
+  const samples: number[] = [];
+  for (let offset = -5; offset <= 5; offset += 1) {
+    const candidate = y + offset;
+    if (candidate < 0 || candidate >= SIZE) continue;
+    const value = centralWidth(mask, width, candidate, centerX);
+    if (value && value > 2) samples.push(value);
   }
-  return null;
+  if (!samples.length) return null;
+  samples.sort((a, b) => a - b);
+  return samples[Math.floor(samples.length / 2)];
+}
+
+function symmetryAt(mask: Uint8Array, width: number, y: number, centerX: number) {
+  const segments = rowSegments(mask, width, y);
+  const containing = segments.find(([start, end]) => start <= centerX && end >= centerX);
+  if (!containing) return 0.5;
+  const left = centerX - containing[0];
+  const right = containing[1] - centerX;
+  return 1 - Math.min(1, Math.abs(left - right) / Math.max(left, right, 1));
 }
 
 async function analyzeFile(file: File): Promise<ViewAnalysis> {
@@ -153,6 +164,11 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
   const hipWidth = nearestRowWidth(mask, SIZE, rowAt(0.59), centerX);
   const kneeWidth = nearestRowWidth(mask, SIZE, rowAt(0.78), centerX);
   const ankleWidth = nearestRowWidth(mask, SIZE, rowAt(0.94), centerX);
+  const symmetryRows = [0.12, 0.29, 0.39, 0.50, 0.59].map((fraction) =>
+    symmetryAt(mask, SIZE, rowAt(fraction), centerX)
+  );
+  const silhouetteSymmetry =
+    symmetryRows.reduce((sum, value) => sum + value, 0) / symmetryRows.length;
 
   let legSplitY: number | null = null;
   for (let y = rowAt(0.52); y < rowAt(0.82); y += 1) {
@@ -182,7 +198,11 @@ async function analyzeFile(file: File): Promise<ViewAnalysis> {
     kneeWidth: kneeWidth ? kneeWidth / bodyHeight : null,
     ankleWidth: ankleWidth ? ankleWidth / bodyHeight : null,
     legSplitY: legSplitY ? (legSplitY - minY) / bodyHeight : null,
-    armSpan: bodyWidth / bodyHeight
+    armSpan: bodyWidth / bodyHeight,
+    shoulderY: 0.29,
+    waistY: 0.50,
+    hipY: 0.59,
+    silhouetteSymmetry
   };
 }
 
@@ -239,7 +259,17 @@ export async function analyzeMultiView(
     armLength: mapRatio(armSpan, 1.02, 0.9, 1.12),
     legLength: legSplit
       ? clamp((1 - legSplit) / 0.47, 0.9, 1.12)
-      : 1
+      : 1,
+    // Broad body mass estimate. Width and depth together are more stable than
+    // either alone, and this feeds MakeHuman's weight/muscle macro pair.
+    build: clamp(
+      ((mapRatio(chest, 0.205, 0.82, 1.18) +
+        mapRatio(waist, 0.15, 0.82, 1.18) +
+        mapRatio(hips, 0.18, 0.82, 1.18) +
+        mapRatio(sideWaist, 0.115, 0.82, 1.18)) / 4),
+      0.78,
+      1.22
+    )
   };
 
   const available = [front, side, back].filter(Boolean) as ViewAnalysis[];
@@ -258,13 +288,20 @@ export async function analyzeMultiView(
   const agreement = (['headWidth','shoulderWidth','chestWidth','waistWidth','hipWidth'] as const)
     .reduce((sum, key) => sum + pairAgreement(key), 0) / 5;
   const viewCoverage = available.length / 3;
-  const fitQuality = clamp(confidence * 0.35 + agreement * 0.35 + viewCoverage * 0.30, 0, 0.92);
+  const symmetry = available.length
+    ? available.reduce((sum, view) => sum + view.silhouetteSymmetry, 0) / available.length
+    : 0;
+  const fitQuality = clamp(
+    confidence * 0.25 + agreement * 0.30 + viewCoverage * 0.25 + symmetry * 0.20,
+    0,
+    0.94
+  );
 
   const notes: string[] = [];
   if (!front) notes.push('Front view missing.');
   if (!side) notes.push('Side view missing, depth morphs remain approximate.');
   if (!back) notes.push('Back view missing, rear silhouette is not cross-checked.');
-  notes.push('Confidence measures silhouette extraction, not final body-fit accuracy.');
+  notes.push('Fit uses normalized silhouette measurements; manual morphs remain editable after fitting.');
   if (confidence < 0.45) {
     notes.push('Low silhouette extraction confidence. Plain backgrounds and T-poses will fit better.');
   }
