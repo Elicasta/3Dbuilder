@@ -3,6 +3,7 @@ import { Suspense, useEffect, useMemo } from 'react';
 import { Box3, BufferGeometry, Float32BufferAttribute, Group, Vector3 } from 'three';
 import { Canvas } from '@react-three/fiber';
 import type { CharacterState } from '../types/character';
+import CanonicalBody from './CanonicalBody';
 
 function Surface({
   color,
@@ -297,21 +298,7 @@ function CharacterMesh({ character }: { character: CharacterState }) {
 
   return (
     <group position={[0, -0.2, 0]}>
-      <ContinuousTorso
-        color={appearance.skin}
-        roughness={skinRoughness}
-        radialSegments={realistic ? 64 : 48}
-        rings={[
-          { y: 0.48 * height, rx: 0.48 * build * hips, rz: 0.34 * build * hipDepth },
-          { y: 0.72 * height, rx: 0.58 * build * hips, rz: 0.4 * build * hipDepth },
-          { y: 0.98 * height, rx: 0.5 * build * waist, rz: 0.34 * build * waistDepth },
-          { y: 1.28 * height * torsoLength, rx: 0.52 * build * waist, rz: 0.36 * build * waistDepth },
-          { y: torsoY, rx: 0.67 * build * chest, rz: 0.43 * build * chestDepth },
-          { y: 1.82 * height * torsoLength, rx: 0.76 * build * chest * shoulder, rz: 0.46 * build * chestDepth },
-          { y: shoulderY, rx: 0.7 * build * shoulder, rz: 0.42 * build * chestDepth },
-          { y: 2.24 * height * torsoLength, rx: 0.4 * build * morphs.neckThickness, rz: 0.34 * build * morphs.neckThickness }
-        ]}
-      />
+      <CanonicalBody character={character} />
       <Joint position={[-shoulderJointX, shoulderY, 0]} scale={[0.42 * build, 0.54 * build, 0.56 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
       <Joint position={[shoulderJointX, shoulderY, 0]} scale={[0.42 * build, 0.54 * build, 0.56 * chestDepth]} color={appearance.skin} roughness={skinRoughness} />
       <Joint position={[-hipX, hipJointY, 0]} scale={[0.72 * legThickness, 0.92 * legThickness, 0.76 * hipDepth]} color={appearance.skin} roughness={skinRoughness} />
