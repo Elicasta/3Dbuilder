@@ -513,3 +513,23 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running 3D Builder");
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn safe_filename_normalizes_character_names() {
+        assert_eq!(safe_filename("Field Soldier 01"), "field-soldier-01");
+        assert_eq!(safe_filename("  "), "character");
+        assert_eq!(safe_filename("Alpha_Bravo"), "alpha_bravo");
+    }
+
+    #[test]
+    fn engine_catalog_rejects_unknown_ids() {
+        assert!(engine_spec("triposr").is_some());
+        assert!(engine_spec("charactergen").is_some());
+        assert!(engine_spec("definitely-not-an-engine").is_none());
+    }
+}
