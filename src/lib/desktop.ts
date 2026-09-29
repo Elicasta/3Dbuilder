@@ -34,6 +34,14 @@ export async function getMakeHumanBaseObj(): Promise<string> {
   return invoke<string>('makehuman_base_obj');
 }
 
+export async function getMakeHumanTargetCatalog(): Promise<string[]> {
+  return invoke<string[]>('makehuman_target_catalog');
+}
+
+export async function getMakeHumanTargetText(relativePath: string): Promise<string> {
+  return invoke<string>('makehuman_target_text', { relativePath });
+}
+
 export async function getMakeHumanAssetStatus(): Promise<MakeHumanAssetStatus> {
   return invoke<MakeHumanAssetStatus>('makehuman_asset_status');
 }
