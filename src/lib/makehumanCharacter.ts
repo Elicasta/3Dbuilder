@@ -36,7 +36,7 @@ export function resolvedMakeHumanTargets(
   const merged = new Map<string, number>();
   for (const target of [
     ...resolveMakeHumanMacroTargets(character.lane, character.morphs, catalog, character.macro),
-    ...resolveMakeHumanAnatomyTargets(character.lane, character.anatomy, catalog),
+    ...(character.macro.age>=.5 ? resolveMakeHumanAnatomyTargets(character.lane, character.anatomy, catalog) : []),
     ...resolveMakeHumanMorphTargets(character.morphs, catalog),
     ...resolveNativeModifiers(character.nativeModifiers ?? {}, catalog)
   ]) {
