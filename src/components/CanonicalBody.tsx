@@ -95,7 +95,8 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
   // and the head is a fixed-index ellipsoid so morphs never change topology.
   const neckStarts:number[]=[];
   [
-    {y:neckBaseY,rx:.29*m.neckThickness,rz:.25*m.neckThickness},
+    // torsoStarts[-1] already IS the neck base. Do not duplicate that ring:
+    // connecting coincident 32-vertex loops produced exactly 64 zero-area faces.
     {y:(neckBaseY+neckTopY)*.5,rx:.275*m.neckThickness,rz:.245*m.neckThickness},
     {y:neckTopY,rx:.30*m.neckThickness,rz:.27*m.neckThickness}
   ].forEach(r=>{
@@ -104,7 +105,6 @@ export function buildCanonicalGeometry(character: CharacterState, pose: PoseStat
   });
   connectRings(indices,torsoStarts[torsoStarts.length-1],neckStarts[0],seg);
   connectRings(indices,neckStarts[0],neckStarts[1],seg);
-  connectRings(indices,neckStarts[1],neckStarts[2],seg);
   addEllipsoid(0,headY,0,headRx,headRy,headRz,character.style==='realHuman'?16:12,seg);
 
   const addArm = (sign:number) => {
