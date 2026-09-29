@@ -1,10 +1,12 @@
 import { ContactShadows, OrbitControls, useGLTF } from '@react-three/drei';
-import { Suspense, useEffect, useMemo } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Box3, BufferGeometry, Float32BufferAttribute, Group, Vector3 } from 'three';
 import { Canvas } from '@react-three/fiber';
 import type { CharacterState } from '../types/character';
 import CanonicalBody from './CanonicalBody';
 import RigOverlay from './RigOverlay';
+import { POSES, POSE_LABELS, type PosePreset, type PoseState } from '../lib/pose';
+import { posedJoints } from '../lib/posedRig';
 
 function Surface({
   color,
@@ -170,7 +172,7 @@ function Eye({
   );
 }
 
-function CharacterMesh({ character }: { character: CharacterState }) {
+function CharacterMesh({ character, pose }: { character: CharacterState; pose: PoseState }) {
   const { morphs, appearance, wardrobe, lane, style } = character;
   const height = morphs.height;
   const build = morphs.build;
@@ -190,6 +192,7 @@ function CharacterMesh({ character }: { character: CharacterState }) {
   const alien = lane === 'alien';
   const female = lane === 'female';
   const realistic = style === 'realHuman';
+  const posed = useMemo(() => new Map(posedJoints(character, pose).map(j => [j.name, j.position])), [character, pose]);
 
   // One connected proportion scaffold. Keep the pelvis above the knees and the
   // ankles on a stable floor so the editable body reads like a person before
@@ -216,7 +219,7 @@ function CharacterMesh({ character }: { character: CharacterState }) {
 
   return (
     <group position={[0, -0.2, 0]}>
-      <CanonicalBody character={character} />
+      <CanonicalBody character={character} pose={pose} />
       <mesh position={[0, neckY, 0]} scale={[0.38 * morphs.neckThickness, 0.48 * morphs.neckLength, 0.36 * morphs.neckThickness]} castShadow>
         <capsuleGeometry args={[0.25, 0.45, 8, 20]} />
         <Surface color={appearance.skin} roughness={skinRoughness} />
@@ -239,10 +242,10 @@ function CharacterMesh({ character }: { character: CharacterState }) {
         <mesh position={[0.19 * head, headY + 0.19 * head, 0.49 * head]} rotation={[0, 0, 0.08]} scale={[0.17 * head, 0.025 * head, 0.025]}><boxGeometry args={[1, 1, 1]} /><Surface color={appearance.brows} roughness={0.86} /></mesh>
       </>}
       <mesh position={[0, headY - 0.26 * head, 0.455 * head]} scale={[0.22 * morphs.jawWidth, 0.055, 0.035]}><sphereGeometry args={[0.5, 20, 14]} /><Surface color={appearance.lips} roughness={0.58} /></mesh>
-      <Hand position={[-armReach, shoulderY, 0]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
-      <Hand position={[armReach, shoulderY, 0]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
-      <Foot position={[-hipX, footY, 0.18]} scale={morphs.footSize * build} color={appearance.skin} roughness={skinRoughness} />
-      <Foot position={[hipX, footY, 0.18]} scale={morphs.footSize * build} color={appearance.skin} roughness={skinRoughness} />
+      <Hand position={(posed.get('handL') ?? [-armReach, shoulderY, 0]) as [number,number,number]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
+      <Hand position={(posed.get('handR') ?? [armReach, shoulderY, 0]) as [number,number,number]} scale={morphs.handSize * build} color={appearance.skin} roughness={skinRoughness} />
+      <Foot position={(posed.get('toeL') ?? [-hipX, footY, 0.18]) as [number,number,number]} scale={morphs.footSize * build} color={appearance.skin} roughness={skinRoughness} />
+      <Foot position={(posed.get('toeR') ?? [hipX, footY, 0.18]) as [number,number,number]} scale={morphs.footSize * build} color={appearance.skin} roughness={skinRoughness} />
       <mesh position={[0, 0.75 * height, 0]} scale={[0.8 * build * waist, 0.34, 0.53 * build * waistDepth]} castShadow><boxGeometry args={[1.35, 0.72, 0.9]} /><Surface color={appearance.underwear} roughness={0.88} /></mesh>
       {female && morphs.bust > 0.72 && <><mesh position={[-0.27 * chest, torsoY + 0.18, 0.41 * chestDepth]} scale={[0.28 * morphs.bust, 0.3 * morphs.bust, 0.2 * morphs.bustProjection]} castShadow><sphereGeometry args={[0.55, 28, 20]} /><Surface color={wardrobe.shirt ? appearance.shirt : appearance.skin} roughness={skinRoughness} /></mesh><mesh position={[0.27 * chest, torsoY + 0.18, 0.41 * chestDepth]} scale={[0.28 * morphs.bust, 0.3 * morphs.bust, 0.2 * morphs.bustProjection]} castShadow><sphereGeometry args={[0.55, 28, 20]} /><Surface color={wardrobe.shirt ? appearance.shirt : appearance.skin} roughness={skinRoughness} /></mesh></>}
       {wardrobe.shirt && <mesh position={[0, torsoY, 0]} scale={[0.9 * build * chest * shoulder, 0.89 * height * torsoLength, 0.51 * build * chestDepth]} castShadow><capsuleGeometry args={[0.6, 1.18, 10, 30]} /><Surface color={appearance.shirt} roughness={0.82} /></mesh>}
@@ -349,6 +352,8 @@ export default function CharacterViewport({
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
 }) {
+  const [posePreset, setPosePreset] = useState<PosePreset>('tPose');
+  const pose = POSES[posePreset];
   return (
     <section className="panel viewport-panel">
       <div className="panel-header viewport-header">
@@ -362,14 +367,17 @@ export default function CharacterViewport({
           <span className="live-badge">LIVE</span>
         </div>
       </div>
+      <div className="pose-strip">
+        {(Object.keys(POSES) as PosePreset[]).map(preset => <button key={preset} type="button" className={posePreset === preset ? 'active' : ''} onClick={() => setPosePreset(preset)}>{POSE_LABELS[preset]}</button>)}
+      </div>
       <div className="viewport-canvas">
         <Canvas shadows camera={{ position: [5.5, 2.6, 6.2], fov: 34 }}>
           <color attach="background" args={['#11151d']} />
           <ambientLight intensity={1.2} />
           <directionalLight castShadow intensity={3.1} position={[4, 8, 5]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
           <directionalLight intensity={1.25} position={[-5, 3, -4]} />
-          {(viewMode === 'canonical' || viewMode === 'rig' || viewMode === 'overlay') && <CharacterMesh character={character} />}
-          {viewMode === 'rig' && <RigOverlay character={character} />}
+          {(viewMode === 'canonical' || viewMode === 'rig' || viewMode === 'overlay') && <CharacterMesh character={character} pose={pose} />}
+          {viewMode === 'rig' && <RigOverlay character={character} pose={pose} />}
           {aiMeshUrl && (viewMode === 'ai' || viewMode === 'overlay') && <Suspense fallback={null}><AlignedAICandidate url={aiMeshUrl} character={character} overlay={viewMode === 'overlay'} /></Suspense>}
           <gridHelper args={[18, 18, '#303846', '#202630']} position={[0, -2.05, 0]} />
           <ContactShadows position={[0, -2.03, 0]} opacity={0.38} scale={10} blur={2.5} far={6} />
